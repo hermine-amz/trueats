@@ -1,20 +1,22 @@
 import 'package:flutter/material.dart';
+import 'core/theme.dart';
+import 'features/onboarding/onboarding_screen.dart';
 
 void main() {
-  runApp(const MainApp());
+  runApp(const TruEatsApp());
 }
 
-class MainApp extends StatelessWidget {
-  const MainApp({super.key});
+class TruEatsApp extends StatelessWidget {
+  const TruEatsApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
-      home: Scaffold(
-        body: Center(
-          child: Text('Hello World!'),
-        ),
-      ),
+    return MaterialApp(
+      title: 'TruEats',
+      debugShowCheckedModeBanner: false,
+      theme: AppTheme.lightTheme,
+      home: const OnboardingScreen(),
     );
   }
 }
+
