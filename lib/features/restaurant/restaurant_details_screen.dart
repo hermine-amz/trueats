@@ -183,11 +183,141 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
     );
   }
 
+  Widget _buildHeader() {
+    final textTheme = Theme.of(context).textTheme;
+    final hasPhoto = _restaurant.photoUrl != null && _restaurant.photoUrl!.trim().isNotEmpty;
+
+    return Stack(
+      children: [
+        // Background photo or default colored background
+        Container(
+          width: double.infinity,
+          height: 280,
+          color: AppColors.cremeFonce,
+          child: hasPhoto
+              ? ImageUrlHelper.buildImage(
+                  _restaurant.photoUrl,
+                  fit: BoxFit.cover,
+                  placeholder: const Center(child: CircularProgressIndicator()),
+                )
+              : const Center(
+                  child: Icon(
+                    Icons.restaurant_outlined,
+                    size: 80,
+                    color: AppColors.terracotta,
+                  ),
+                ),
+        ),
+        // Dark top overlay for back/bookmark button visibility
+        Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          height: 80,
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Colors.black.withValues(alpha: 0.4),
+                  Colors.transparent,
+                ],
+              ),
+            ),
+          ),
+        ),
+        // Back and Bookmark Buttons
+        Positioned(
+          top: MediaQuery.of(context).padding.top + 12,
+          left: 16,
+          right: 16,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              CircleAvatar(
+                backgroundColor: Colors.black38,
+                child: IconButton(
+                  icon: const Icon(Icons.arrow_back, color: Colors.white),
+                  onPressed: () => Navigator.of(context).pop(),
+                ),
+              ),
+              CircleAvatar(
+                backgroundColor: Colors.black38,
+                child: IconButton(
+                  icon: const Icon(Icons.bookmark_add_outlined, color: Colors.white),
+                  onPressed: _showAddToExploreDialog,
+                ),
+              ),
+            ],
+          ),
+        ),
+        // Bottom details overlay: transparent/slightly white transparent
+        Positioned(
+          bottom: 0,
+          left: 0,
+          right: 0,
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(16, 32, 16, 16),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Colors.white.withValues(alpha: 0.0),
+                  Colors.white.withValues(alpha: 0.85),
+                  Colors.white,
+                ],
+                stops: const [0.0, 0.45, 1.0],
+              ),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                RestaurantLogo(
+                  logoUrl: _restaurant.logoUrl,
+                  restaurantName: _restaurant.nom,
+                  size: 64,
+                  isCircular: true,
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        '${_restaurant.categorie.toUpperCase()} · ${_restaurant.typeCuisine.toUpperCase()}',
+                        style: textTheme.labelLarge?.copyWith(
+                          color: AppColors.terracotta,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 1.2,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        _restaurant.nom,
+                        style: textTheme.displayLarge?.copyWith(
+                          color: AppColors.marronFonce,
+                          fontSize: 26,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-
     return Scaffold(
+      backgroundColor: AppColors.creme,
       body: SafeArea(
         top: false,
         bottom: true,
@@ -195,125 +325,33 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
           alignment: Alignment.topCenter,
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 600),
-            child: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    width: double.infinity,
-                    color: AppColors.terracotta,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (_restaurant.photoUrl != null &&
-                            _restaurant.photoUrl!.trim().isNotEmpty)
-                          AspectRatio(
-                            aspectRatio: 16 / 9,
-                            child: ImageUrlHelper.buildImage(
-                              _restaurant.photoUrl,
-                              fit: BoxFit.cover,
-                              placeholder: const SizedBox.shrink(),
-                            ),
-                          ),
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 24, 16, 24),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  CircleAvatar(
-                                    backgroundColor: Colors.black26,
-                                    child: IconButton(
-                                      icon: const Icon(
-                                        Icons.arrow_back,
-                                        color: Colors.white,
-                                      ),
-                                      onPressed: () =>
-                                          Navigator.of(context).pop(),
-                                    ),
-                                  ),
-                                  IconButton(
-                                    icon: const Icon(
-                                      Icons.bookmark_add_outlined,
-                                      color: Colors.white,
-                                    ),
-                                    onPressed: _showAddToExploreDialog,
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 18),
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  RestaurantLogo(
-                                    logoUrl: _restaurant.logoUrl,
-                                    restaurantName: _restaurant.nom,
-                                    size: 72,
-                                    isCircular: true,
-                                  ),
-                                  const SizedBox(width: 16),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          '${_restaurant.categorie.toUpperCase()} · ${_restaurant.typeCuisine.toUpperCase()}',
-                                          style: textTheme.labelLarge?.copyWith(
-                                            color: Colors.white.withValues(
-                                              alpha: 0.8,
-                                            ),
-                                            fontSize: 12,
-                                            letterSpacing: 1.5,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 6),
-                                        Text(
-                                          _restaurant.nom,
-                                          style: textTheme.displayLarge
-                                              ?.copyWith(
-                                            color: Colors.white,
-                                            fontSize: 32,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildHeader(),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
+                  child: Row(
+                    children: [
+                      _buildTabButton(0, 'Menu'),
+                      const SizedBox(width: 24),
+                      _buildTabButton(1, 'Avis'),
+                      const SizedBox(width: 24),
+                      _buildTabButton(2, 'Infos'),
+                    ],
                   ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const SizedBox(height: 20),
-                        Row(
-                          children: [
-                            _buildTabButton(0, 'Menu'),
-                            const SizedBox(width: 24),
-                            _buildTabButton(1, 'Avis'),
-                            const SizedBox(width: 24),
-                            _buildTabButton(2, 'Infos'),
-                          ],
-                        ),
-                        const Divider(height: 1, color: AppColors.grisBordure),
-                        const SizedBox(height: 20),
-                        _buildTabContent(),
-                        const SizedBox(height: 40),
-                      ],
-                    ),
+                ),
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 24.0),
+                  child: Divider(height: 1, color: AppColors.grisBordure),
+                ),
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20),
+                    child: _buildTabContent(),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ),
