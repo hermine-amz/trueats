@@ -6,6 +6,7 @@ import '../../core/theme.dart';
 import '../auth/login_screen.dart';
 import '../gerant/managed_restaurants_screen.dart';
 import '../gerant/register_restaurant_screen.dart';
+import '../admin/admin_console.dart';
 import 'edit_profile_screen.dart';
 import 'explorations_screen.dart';
 
@@ -280,7 +281,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           _onExplorationsTap,
                         ),
                         const SizedBox(height: 18),
-                        if (_currentUser?.role == 'gerant') ...[
+                        if (_currentUser?.role == 'admin') ...[
+                          _buildActivityRow(
+                            context,
+                            Icons.admin_panel_settings_outlined,
+                            "Console Administration",
+                            "Accéder aux outils de supervision",
+                            () async {
+                              await Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (context) => const AdminConsole(),
+                                ),
+                              );
+                              _loadProfile();
+                            },
+                          ),
+                          const SizedBox(height: 36),
+                        ] else if (_currentUser?.role == 'gerant') ...[
                           _buildActivityRow(
                             context,
                             Icons.storefront_outlined,
