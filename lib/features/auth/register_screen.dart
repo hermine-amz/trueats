@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/services/service_locator.dart';
 import '../../core/theme.dart';
+import '../../core/widgets/app_feedback.dart';
 import '../navigation/main_navigation.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -59,11 +60,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
       );
 
       if (success && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Inscription reussie !"),
-            backgroundColor: AppColors.sauge,
-          ),
+        showAppNotification(
+          context,
+          title: "Inscription réussie",
+          message: "Bienvenue sur TruEats !",
+          type: AppFeedbackType.success,
         );
         Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(builder: (context) => const MainNavigation()),
@@ -72,11 +73,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("Erreur lors de l'inscription : $e"),
-            backgroundColor: AppColors.rougeSignalement,
-          ),
+        showAppNotification(
+          context,
+          title: "Erreur d'inscription",
+          message: e.toString(),
+          type: AppFeedbackType.error,
         );
       }
     } finally {
@@ -107,9 +108,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   children: [
                     const SizedBox(height: 10),
                     Row(
-                      children: [
-                        Container(
-                          width: 38,
+                        children: [
+                          if (Navigator.of(context).canPop()) ...[
+                            IconButton(
+                              icon: const Icon(Icons.arrow_back, color: AppColors.marronFonce),
+                              onPressed: () => Navigator.of(context).pop(),
+                            ),
+                            const SizedBox(width: 8),
+                          ],
+                          Container(
+                            width: 38,
                           height: 38,
                           decoration: const BoxDecoration(
                             color: AppColors.terracotta,

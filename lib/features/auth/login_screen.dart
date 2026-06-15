@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/services/service_locator.dart';
 import '../../core/theme.dart';
+import '../../core/widgets/app_feedback.dart';
 import '../navigation/main_navigation.dart';
 import 'register_screen.dart';
 import 'reset_password_screen.dart';
@@ -67,11 +68,11 @@ class _LoginScreenState extends State<LoginScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("Erreur de connexion : $e"),
-            backgroundColor: AppColors.rougeSignalement,
-          ),
+        showAppNotification(
+          context,
+          title: "Erreur de connexion",
+          message: e.toString(),
+          type: AppFeedbackType.error,
         );
       }
     } finally {
@@ -109,6 +110,13 @@ class _LoginScreenState extends State<LoginScreen> {
                       // En-tête de marque : Logo T + TruEats
                       Row(
                         children: [
+                          if (Navigator.of(context).canPop()) ...[
+                            IconButton(
+                              icon: const Icon(Icons.arrow_back, color: AppColors.marronFonce),
+                              onPressed: () => Navigator.of(context).pop(),
+                            ),
+                            const SizedBox(width: 8),
+                          ],
                           Container(
                             width: 38,
                             height: 38,

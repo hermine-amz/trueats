@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/interfaces.dart';
 import '../theme.dart';
+import 'app_feedback.dart';
 
 class ReportReviewDialog extends StatefulWidget {
   final Avis avis;
@@ -49,11 +50,11 @@ class _ReportReviewDialogState extends State<ReportReviewDialog> {
 
       if (mounted) {
         Navigator.of(context).pop(); // Ferme le dialogue
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Signalement envoyé avec succès aux modérateurs."),
-            backgroundColor: AppColors.sauge,
-          ),
+        showAppNotification(
+          context,
+          title: "Signalement envoyé",
+          message: "Signalement envoyé avec succès aux modérateurs.",
+          type: AppFeedbackType.success,
         );
         if (widget.onReportSubmitted != null) {
           widget.onReportSubmitted!();
@@ -61,11 +62,11 @@ class _ReportReviewDialogState extends State<ReportReviewDialog> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("Erreur lors de l'envoi du signalement : $e"),
-            backgroundColor: AppColors.rougeSignalement,
-          ),
+        showAppNotification(
+          context,
+          title: "Erreur",
+          message: "Erreur lors de l'envoi du signalement : $e",
+          type: AppFeedbackType.error,
         );
       }
     } finally {

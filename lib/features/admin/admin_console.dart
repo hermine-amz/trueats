@@ -422,19 +422,35 @@ class _AdminConsoleState extends State<AdminConsole> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        "CONSOLE ADMIN",
-                        style: textTheme.labelLarge?.copyWith(
-                          color: AppColors.grisTexte,
-                          fontSize: 11,
-                          letterSpacing: 2,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        "Supervision",
-                        style: textTheme.displayLarge?.copyWith(fontSize: 28),
+                      Row(
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.arrow_back, color: AppColors.marronFonce),
+                            onPressed: () => Navigator.of(context).pop(),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  "CONSOLE ADMIN",
+                                  style: textTheme.labelLarge?.copyWith(
+                                    color: AppColors.grisTexte,
+                                    fontSize: 11,
+                                    letterSpacing: 2,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  "Supervision",
+                                  style: textTheme.displayLarge?.copyWith(fontSize: 28),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 22),
                       Row(

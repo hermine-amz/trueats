@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/theme.dart';
+import '../../core/widgets/app_feedback.dart';
 import 'login_screen.dart';
 
 class ResetPasswordScreen extends StatefulWidget {
@@ -38,11 +39,11 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
       _hasSentLink = true;
     });
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Un lien de réinitialisation a été envoyé.'),
-        backgroundColor: AppColors.sauge,
-      ),
+    showAppNotification(
+      context,
+      title: 'Lien envoyé',
+      message: 'Un lien de réinitialisation a été envoyé.',
+      type: AppFeedbackType.success,
     );
   }
 
@@ -70,6 +71,13 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                     children: [
                       Row(
                         children: [
+                          if (Navigator.of(context).canPop()) ...[
+                            IconButton(
+                              icon: const Icon(Icons.arrow_back, color: AppColors.marronFonce),
+                              onPressed: () => Navigator.of(context).pop(),
+                            ),
+                            const SizedBox(width: 8),
+                          ],
                           Container(
                             width: 38,
                             height: 38,

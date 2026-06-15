@@ -8,6 +8,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../core/services/interfaces.dart';
 import '../../core/services/service_locator.dart';
 import '../../core/theme.dart';
+import '../../core/widgets/app_feedback.dart';
 
 class RegisterRestaurantScreen extends StatefulWidget {
   const RegisterRestaurantScreen({super.key});
@@ -93,11 +94,11 @@ class _RegisterRestaurantScreenState extends State<RegisterRestaurantScreen> {
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Erreur lors de la selection du fichier : $e'),
-          backgroundColor: AppColors.rougeSignalement,
-        ),
+      showAppNotification(
+        context,
+        title: 'Erreur',
+        message: 'Erreur lors de la sélection du fichier : $e',
+        type: AppFeedbackType.error,
       );
     }
   }
@@ -166,30 +167,42 @@ class _RegisterRestaurantScreenState extends State<RegisterRestaurantScreen> {
     final superficie = int.tryParse(_superficieController.text.trim());
 
     if (latitude == null || longitude == null || superficie == null || superficie < 10) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Coordonnees GPS ou superficie invalides (min 10 m²).')),
+      showAppNotification(
+        context,
+        title: 'Validation',
+        message: 'Coordonnées GPS ou superficie invalides (min 10 m²).',
+        type: AppFeedbackType.warning,
       );
       return;
     }
 
     // Validation des documents obligatoires pour l'approbation
     if (_cipFile == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Le CIP du gerant est obligatoire.')),
+      showAppNotification(
+        context,
+        title: 'Document requis',
+        message: 'Le CIP du gérant est obligatoire.',
+        type: AppFeedbackType.warning,
       );
       return;
     }
 
     if (_ifuNumeroController.text.trim().isEmpty || _ifuAttestationFile == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Le numero IFU et l attestation IFU sont requis.')),
+      showAppNotification(
+        context,
+        title: 'Documents requis',
+        message: 'Le numéro IFU et l\'attestation IFU sont requis.',
+        type: AppFeedbackType.warning,
       );
       return;
     }
 
     if (_rccmNumeroController.text.trim().isEmpty || _rccmExtraitFile == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Le numero RCCM et l extrait RCCM sont requis.')),
+      showAppNotification(
+        context,
+        title: 'Documents requis',
+        message: 'Le numéro RCCM et l\'extrait RCCM sont requis.',
+        type: AppFeedbackType.warning,
       );
       return;
     }
@@ -221,11 +234,11 @@ class _RegisterRestaurantScreenState extends State<RegisterRestaurantScreen> {
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Erreur transfert documents : $e'),
-          backgroundColor: AppColors.rougeSignalement,
-        ),
+      showAppNotification(
+        context,
+        title: 'Erreur transfert',
+        message: 'Erreur transfert documents : $e',
+        type: AppFeedbackType.error,
       );
       setState(() {
         _isSubmitting = false;
@@ -269,22 +282,22 @@ class _RegisterRestaurantScreenState extends State<RegisterRestaurantScreen> {
         _isSubmitting = false;
       });
       Navigator.of(context).pop(true);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('${newRestaurant.nom} a ete soumis pour validation admin.'),
-          backgroundColor: AppColors.sauge,
-        ),
+      showAppNotification(
+        context,
+        title: 'Demande soumise',
+        message: '${newRestaurant.nom} a été soumis pour validation admin.',
+        type: AppFeedbackType.success,
       );
     } catch (e) {
       if (!mounted) return;
       setState(() {
         _isSubmitting = false;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Erreur creation restaurant : $e'),
-          backgroundColor: AppColors.rougeSignalement,
-        ),
+      showAppNotification(
+        context,
+        title: 'Erreur de création',
+        message: 'Erreur création restaurant : $e',
+        type: AppFeedbackType.error,
       );
     }
   }

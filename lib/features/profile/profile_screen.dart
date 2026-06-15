@@ -7,6 +7,7 @@ import '../auth/login_screen.dart';
 import '../gerant/managed_restaurants_screen.dart';
 import '../gerant/register_restaurant_screen.dart';
 import '../admin/admin_console.dart';
+import '../../core/widgets/app_feedback.dart';
 import 'edit_profile_screen.dart';
 import 'explorations_screen.dart';
 
@@ -156,12 +157,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   subtitle: "Utilisee uniquement pour certifier les avis",
                   onTap: () {
                     Navigator.of(context).pop();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                          "La verification GPS est declenchee au moment de publier un avis.",
-                        ),
-                      ),
+                    showAppNotification(
+                      context,
+                      title: "Vérification GPS",
+                      message: "La vérification GPS est déclenchée au moment de publier un avis.",
+                      type: AppFeedbackType.info,
                     );
                   },
                 ),
@@ -172,10 +172,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   subtitle: "Compte actif et acces utilisateur",
                   onTap: () {
                     Navigator.of(context).pop();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text("Options de securite en preparation."),
-                      ),
+                    showAppNotification(
+                      context,
+                      title: "Sécurité",
+                      message: "Options de sécurité en préparation.",
+                      type: AppFeedbackType.info,
                     );
                   },
                 ),

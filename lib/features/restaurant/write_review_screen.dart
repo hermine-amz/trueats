@@ -4,6 +4,7 @@ import '../../core/services/interfaces.dart';
 import '../../core/services/service_locator.dart';
 import '../../core/services/mock_services.dart';
 import '../../core/theme.dart';
+import '../../core/widgets/app_feedback.dart';
 
 class WriteReviewScreen extends StatefulWidget {
   final Restaurant restaurant;
@@ -106,8 +107,11 @@ class _WriteReviewScreenState extends State<WriteReviewScreen> {
     final comment = _commentController.text.trim();
 
     if (comment.isEmpty || _isUsingDefaultComment) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Veuillez rédiger un commentaire.')),
+      showAppNotification(
+        context,
+        title: 'Commentaire requis',
+        message: 'Veuillez rédiger un commentaire.',
+        type: AppFeedbackType.warning,
       );
       return;
     }
@@ -132,21 +136,21 @@ class _WriteReviewScreenState extends State<WriteReviewScreen> {
       );
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Votre avis a été publié avec succès !'),
-            backgroundColor: AppColors.sauge,
-          ),
+        showAppNotification(
+          context,
+          title: 'Avis publié',
+          message: 'Votre avis a été publié avec succès !',
+          type: AppFeedbackType.success,
         );
         Navigator.of(context).pop();
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Erreur lors de la publication : $e'),
-            backgroundColor: AppColors.rougeSignalement,
-          ),
+        showAppNotification(
+          context,
+          title: 'Erreur',
+          message: 'Erreur lors de la publication : $e',
+          type: AppFeedbackType.error,
         );
       }
     } finally {

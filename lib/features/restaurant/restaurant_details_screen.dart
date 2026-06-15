@@ -6,6 +6,7 @@ import '../../core/theme.dart';
 import '../../core/utils/image_url_helper.dart';
 import '../../core/widgets/restaurant_logo.dart';
 import '../../core/widgets/review_card.dart';
+import '../../core/widgets/app_feedback.dart';
 
 class RestaurantDetailsScreen extends StatefulWidget {
   final Restaurant restaurant;
@@ -159,17 +160,14 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
                   child: ElevatedButton(
                     onPressed: () async {
                       final navigator = Navigator.of(dialogContext);
-                      final messenger = ScaffoldMessenger.of(context);
                       await _addRestaurantToExploreList();
                       if (!mounted) return;
                       navigator.pop();
-                      messenger.showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            '${_restaurant.nom} ajouté à À explorer',
-                          ),
-                          backgroundColor: AppColors.sauge,
-                        ),
+                      showAppNotification(
+                        context,
+                        title: 'Ajouté à la liste',
+                        message: '${_restaurant.nom} a été ajouté à "À explorer".',
+                        type: AppFeedbackType.success,
                       );
                     },
                     child: const Text('Ajouter'),

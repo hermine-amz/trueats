@@ -4,6 +4,7 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import '../../core/services/interfaces.dart';
 import '../../core/services/service_locator.dart';
 import '../../core/theme.dart';
+import '../../core/widgets/app_feedback.dart';
 import '../restaurant/restaurant_details_screen.dart';
 import '../restaurant/write_review_screen.dart';
 
@@ -76,11 +77,11 @@ class _ScanQrScreenState extends State<ScanQrScreen> {
           setState(() {
             _isLoading = false;
           });
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text("Restaurant non trouvé pour ce QR Code."),
-              backgroundColor: AppColors.rougeSignalement,
-            ),
+          showAppNotification(
+            context,
+            title: "Restaurant non trouvé",
+            message: "Restaurant non trouvé pour ce QR Code.",
+            type: AppFeedbackType.error,
           );
           _onResetScan();
         }
@@ -90,11 +91,11 @@ class _ScanQrScreenState extends State<ScanQrScreen> {
         setState(() {
           _isLoading = false;
         });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("Erreur de chargement: ${e.toString()}"),
-            backgroundColor: AppColors.rougeSignalement,
-          ),
+        showAppNotification(
+          context,
+          title: "Erreur de chargement",
+          message: e.toString(),
+          type: AppFeedbackType.error,
         );
         _onResetScan();
       }
@@ -198,8 +199,11 @@ class _ScanQrScreenState extends State<ScanQrScreen> {
                 child: IconButton(
                   icon: const Icon(Icons.close, color: Colors.white),
                   onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text("Retour à l'accueil")),
+                    showAppNotification(
+                      context,
+                      title: "Scanner",
+                      message: "Retour à l'accueil",
+                      type: AppFeedbackType.info,
                     );
                   },
                 ),
@@ -258,11 +262,11 @@ class _ScanQrScreenState extends State<ScanQrScreen> {
               InkWell(
                 onTap: () {
                   if (restaurant == null) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text("Le restaurant n'est pas chargé."),
-                        backgroundColor: AppColors.rougeSignalement,
-                      ),
+                    showAppNotification(
+                      context,
+                      title: "Erreur",
+                      message: "Le restaurant n'est pas chargé.",
+                      type: AppFeedbackType.error,
                     );
                     return;
                   }
@@ -333,23 +337,21 @@ class _ScanQrScreenState extends State<ScanQrScreen> {
               InkWell(
                 onTap: () {
                   if (isVisitor) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                          'Vous devez posséder un compte utilisateur pour donner un avis.',
-                        ),
-                        backgroundColor: AppColors.terracotta,
-                      ),
+                    showAppNotification(
+                      context,
+                      title: "Connexion requise",
+                      message: "Vous devez posséder un compte utilisateur pour donner un avis.",
+                      type: AppFeedbackType.warning,
                     );
                     return;
                   }
 
                   if (restaurant == null) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text("Le restaurant n'est pas chargé."),
-                        backgroundColor: AppColors.rougeSignalement,
-                      ),
+                    showAppNotification(
+                      context,
+                      title: "Erreur",
+                      message: "Le restaurant n'est pas chargé.",
+                      type: AppFeedbackType.error,
                     );
                     return;
                   }
