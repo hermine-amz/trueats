@@ -1,0 +1,493 @@
+import 'package:flutter/material.dart';
+
+import '../../core/services/interfaces.dart';
+import '../../core/services/service_locator.dart';
+import '../../core/theme.dart';
+import '../../core/widgets/restaurant_logo.dart';
+import '../../core/widgets/review_card.dart';
+
+class RestaurantDetailsScreen extends StatefulWidget {
+  final Restaurant restaurant;
+  final int initialTabIndex;
+
+  const RestaurantDetailsScreen({
+    super.key,
+    required this.restaurant,
+    this.initialTabIndex = 0,
+  });
+
+  @override
+  State<RestaurantDetailsScreen> createState() =>
+      _RestaurantDetailsScreenState();
+}
+
+class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
+  late int _activeTabIndex;
+  List<Avis> _reviews = [];
+  bool _isLoadingReviews = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _activeTabIndex = widget.initialTabIndex;
+    _loadReviews();
+  }
+
+  Future<void> _loadReviews() async {
+    final list = await ServiceLocator.reviewService.getReviewsForRestaurant(
+      widget.restaurant.id,
+    );
+    if (mounted) {
+      setState(() {
+        _reviews = list;
+        _isLoadingReviews = false;
+      });
+    }
+  }
+
+  Future<void> _addRestaurantToExploreList() async {
+    final lists = await ServiceLocator.restaurantService.getExplorationLists();
+    var exploreList = lists
+        .where((list) => list.nom.toLowerCase() == 'à explorer')
+        .toList();
+
+    if (exploreList.isEmpty) {
+      await ServiceLocator.restaurantService.createExplorationList(
+        'À explorer',
+        false,
+        ['⭐'],
+      );
+      final refreshedLists = await ServiceLocator.restaurantService
+          .getExplorationLists();
+      exploreList = refreshedLists
+          .where((list) => list.nom.toLowerCase() == 'à explorer')
+          .toList();
+    }
+
+    if (exploreList.isEmpty) {
+      return;
+    }
+
+    await ServiceLocator.restaurantService.addRestaurantToExploration(
+      exploreList.first.id,
+      widget.restaurant.id,
+    );
+  }
+
+  Future<void> _showAddToExploreDialog() async {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (dialogContext) {
+        final textTheme = Theme.of(dialogContext).textTheme;
+        return Dialog(
+          backgroundColor: AppColors.creme,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(28),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(24, 24, 24, 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Ajouter à ma liste à explorer',
+                  style: textTheme.displaySmall?.copyWith(fontSize: 20),
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    RestaurantLogo(
+                      logoUrl: widget.restaurant.logoUrl,
+                      restaurantName: widget.restaurant.nom,
+                      size: 64,
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            widget.restaurant.nom,
+                            style: textTheme.titleLarge?.copyWith(
+                              fontSize: 17,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '${widget.restaurant.categorie} · ${widget.restaurant.typeCuisine}',
+                            style: textTheme.bodyMedium?.copyWith(
+                              color: AppColors.grisTexte,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            widget.restaurant.adresse,
+                            style: textTheme.bodyMedium?.copyWith(
+                              color: AppColors.marronFonce,
+                              height: 1.35,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () async {
+                      final navigator = Navigator.of(dialogContext);
+                      final messenger = ScaffoldMessenger.of(context);
+                      await _addRestaurantToExploreList();
+                      if (!mounted) return;
+                      navigator.pop();
+                      messenger.showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            '${widget.restaurant.nom} ajouté à À explorer',
+                          ),
+                          backgroundColor: AppColors.sauge,
+                        ),
+                      );
+                    },
+                    child: const Text('Ajouter'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+
+    return Scaffold(
+      body: SafeArea(
+        top: false,
+        bottom: true,
+        child: Align(
+          alignment: Alignment.topCenter,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 600),
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: double.infinity,
+                    color: AppColors.terracotta,
+                    padding: const EdgeInsets.fromLTRB(16, 24, 16, 24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            CircleAvatar(
+                              backgroundColor: Colors.black26,
+                              child: IconButton(
+                                icon: const Icon(
+                                  Icons.arrow_back,
+                                  color: Colors.white,
+                                ),
+                                onPressed: () => Navigator.of(context).pop(),
+                              ),
+                            ),
+                            IconButton(
+                              icon: const Icon(
+                                Icons.bookmark_add_outlined,
+                                color: Colors.white,
+                              ),
+                              onPressed: _showAddToExploreDialog,
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 18),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            RestaurantLogo(
+                              logoUrl: widget.restaurant.logoUrl,
+                              restaurantName: widget.restaurant.nom,
+                              size: 72,
+                              isCircular: true,
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    '${widget.restaurant.categorie.toUpperCase()} · ${widget.restaurant.typeCuisine.toUpperCase()}',
+                                    style: textTheme.labelLarge?.copyWith(
+                                      color: Colors.white.withValues(
+                                        alpha: 0.8,
+                                      ),
+                                      fontSize: 12,
+                                      letterSpacing: 1.5,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    widget.restaurant.nom,
+                                    style: textTheme.displayLarge?.copyWith(
+                                      color: Colors.white,
+                                      fontSize: 32,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 20),
+                        Row(
+                          children: [
+                            _buildTabButton(0, 'Menu'),
+                            const SizedBox(width: 24),
+                            _buildTabButton(1, 'Avis'),
+                            const SizedBox(width: 24),
+                            _buildTabButton(2, 'Infos'),
+                          ],
+                        ),
+                        const Divider(height: 1, color: AppColors.grisBordure),
+                        const SizedBox(height: 20),
+                        _buildTabContent(),
+                        const SizedBox(height: 40),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTabButton(int index, String label) {
+    final isActive = _activeTabIndex == index;
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _activeTabIndex = index;
+        });
+      },
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+              color: isActive ? AppColors.marronFonce : AppColors.grisTexte,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Container(
+            width: 40,
+            height: 3,
+            color: isActive ? AppColors.terracotta : Colors.transparent,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTabContent() {
+    final textTheme = Theme.of(context).textTheme;
+
+    if (_activeTabIndex == 0) {
+      final groupedMenu = <String, List<Plat>>{};
+      for (final plat in widget.restaurant.menu) {
+        groupedMenu.putIfAbsent(plat.categorie, () => <Plat>[]).add(plat);
+      }
+
+      if (groupedMenu.isEmpty) {
+        return Center(
+          child: Text(
+            'Aucun plat disponible pour le moment.',
+            style: textTheme.bodyLarge?.copyWith(color: AppColors.grisTexte),
+          ),
+        );
+      }
+
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: groupedMenu.entries.expand((entry) {
+          final category = entry.key;
+          final plats = entry.value;
+
+          return <Widget>[
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: AppColors.cremeFonce,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Text(
+                category.toUpperCase(),
+                style: textTheme.labelLarge?.copyWith(
+                  color: AppColors.grisTexte,
+                  letterSpacing: 1.3,
+                  fontSize: 12,
+                ),
+              ),
+            ),
+            const SizedBox(height: 14),
+            ...plats.asMap().entries.expand((dishEntry) {
+              final index = dishEntry.key;
+              final plat = dishEntry.value;
+              final isLastInCategory = index == plats.length - 1;
+
+              return <Widget>[
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            plat.nom,
+                            style: textTheme.titleLarge?.copyWith(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            plat.description,
+                            style: textTheme.bodyMedium?.copyWith(
+                              height: 1.4,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Text(
+                      '${plat.prix.toInt()} FCFA',
+                      style: textTheme.titleLarge?.copyWith(
+                        color: AppColors.terracotta,
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+                if (!isLastInCategory) ...[
+                  const SizedBox(height: 14),
+                  const Divider(height: 1, color: AppColors.grisBordure),
+                  const SizedBox(height: 14),
+                ],
+              ];
+            }),
+            const SizedBox(height: 24),
+          ];
+        }).toList(),
+      );
+    }
+
+    if (_activeTabIndex == 1) {
+      if (_isLoadingReviews) {
+        return const Center(child: CircularProgressIndicator());
+      }
+
+      if (_reviews.isEmpty) {
+        return Center(
+          child: Padding(
+            padding: const EdgeInsets.only(top: 20.0),
+            child: Text(
+              'Aucun avis déposé pour le moment.',
+              style: textTheme.bodyLarge?.copyWith(color: AppColors.grisTexte),
+            ),
+          ),
+        );
+      }
+
+      return ListView.builder(
+        physics: const NeverScrollableScrollPhysics(),
+        shrinkWrap: true,
+        padding: EdgeInsets.zero,
+        itemCount: _reviews.length,
+        itemBuilder: (context, index) {
+          final review = _reviews[index];
+          return ReviewCard(
+            avis: review,
+            reviewService: ServiceLocator.reviewService,
+            onReviewActionCompleted: _loadReviews,
+          );
+        },
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildInfoRow(
+          Icons.location_on_outlined,
+          'Adresse',
+          widget.restaurant.adresse,
+        ),
+        const SizedBox(height: 16),
+        _buildInfoRow(
+          Icons.access_time,
+          'Horaires d\'ouverture',
+          'Lundi - Dimanche : 11h00 - 23h00',
+        ),
+        const SizedBox(height: 16),
+        _buildInfoRow(Icons.phone_outlined, 'Téléphone', '+229 21 30 40 50'),
+      ],
+    );
+  }
+
+  Widget _buildInfoRow(IconData icon, String title, String val) {
+    final textTheme = Theme.of(context).textTheme;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, color: AppColors.terracotta, size: 20),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: textTheme.labelLarge?.copyWith(
+                  color: AppColors.grisTexte,
+                  fontSize: 12,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(val, style: textTheme.bodyLarge?.copyWith(fontSize: 14)),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
