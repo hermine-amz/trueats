@@ -17,12 +17,35 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
+  bool _obscurePassword = true;
 
   @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  Widget _buildQuickLoginButton(String label, String email) {
+    return ActionChip(
+      label: Text(label),
+      backgroundColor: AppColors.creme,
+      labelStyle: const TextStyle(
+        color: AppColors.terracotta,
+        fontWeight: FontWeight.bold,
+        fontSize: 12,
+      ),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: const BorderSide(color: AppColors.terracotta, width: 1),
+      ),
+      onPressed: () {
+        setState(() {
+          _emailController.text = email;
+          _passwordController.text = "password";
+        });
+      },
+    );
   }
 
   Future<void> _handleLogin() async {
@@ -166,7 +189,8 @@ class _LoginScreenState extends State<LoginScreen> {
                         keyboardType: TextInputType.emailAddress,
                         textInputAction: TextInputAction.next,
                         decoration: const InputDecoration(
-                          hintText: "marie@exemple.fr",
+                          labelText: "Adresse e-mail",
+                          hintText: "client@trueats.com ou tanti@trueats.com",
                           prefixIcon: Icon(Icons.email_outlined),
                         ),
                         validator: (value) {
@@ -182,12 +206,26 @@ class _LoginScreenState extends State<LoginScreen> {
                       // Champ Mot de passe
                       TextFormField(
                         controller: _passwordController,
-                        obscureText: true,
+                        obscureText: _obscurePassword,
                         textInputAction: TextInputAction.done,
                         onFieldSubmitted: (_) => _handleLogin(),
-                        decoration: const InputDecoration(
-                          hintText: "•••••••••",
-                          prefixIcon: Icon(Icons.lock_outline_rounded),
+                        decoration: InputDecoration(
+                          labelText: "Mot de passe",
+                          hintText: "Saisissez votre mot de passe",
+                          prefixIcon: const Icon(Icons.lock_outline_rounded),
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _obscurePassword
+                                  ? Icons.visibility_off_outlined
+                                  : Icons.visibility_outlined,
+                              color: AppColors.grisTexte,
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                _obscurePassword = !_obscurePassword;
+                              });
+                            },
+                          ),
                         ),
                         validator: (value) {
                           if (value == null || value.isEmpty) {
@@ -227,6 +265,43 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                       ),
 
+                      const SizedBox(height: 20),
+
+                      // Helper Card for login credentials
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          color: AppColors.cremeFonce,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: AppColors.grisBordure),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "Comptes de test (Cliquez pour remplir) :",
+                              style: textTheme.labelLarge?.copyWith(
+                                color: AppColors.marronFonce,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 13,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: [
+                                _buildQuickLoginButton("Client", "client@trueats.com"),
+                                _buildQuickLoginButton("Tanti (Gérant)", "tanti@trueats.com"),
+                                _buildQuickLoginButton("Bissap (Gérant)", "bissap@trueats.com"),
+                                _buildQuickLoginButton("Admin", "admin@trueats.com"),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+
                       const SizedBox(height: 24),
 
                       //mot de passe oublié
@@ -250,53 +325,6 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                         ),
                       ),
-
-                      // Guide rapide pour les tests (très utile pour naviguer dans l'application)
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: AppColors.cremeFonce,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: AppColors.grisBordure),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                const Icon(
-                                  Icons.info_outline,
-                                  size: 16,
-                                  color: AppColors.terracotta,
-                                ),
-                                const SizedBox(width: 6),
-                                Text(
-                                  "Guide d'évaluation rapide :",
-                                  style: textTheme.labelLarge?.copyWith(
-                                    color: AppColors.terracotta,
-                                    fontSize: 13,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              "Pour tester les différents espaces de l'application :\n"
-                              "• Tapez 'marie' ➔ Espace Client / Visiteur\n"
-                              "• Tapez 'marcel' ➔ Espace Gérant (Chez Marcel)\n"
-                              "• Tapez 'admin' ➔ Console de modération Admin",
-                              style: textTheme.bodyMedium?.copyWith(
-                                color: AppColors.marronFonce,
-                                fontSize: 12,
-                                height: 1.5,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      const SizedBox(height: 28),
 
                       // Pas de compte ? S'inscrire
                       Wrap(

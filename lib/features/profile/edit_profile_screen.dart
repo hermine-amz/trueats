@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/services/interfaces.dart';
 import '../../core/services/service_locator.dart';
 import '../../core/theme.dart';
+import '../../core/widgets/app_feedback.dart';
 
 class EditProfileScreen extends StatefulWidget {
   final User user;
@@ -42,29 +43,53 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   Future<void> _saveProfile() async {
     if (!_formKey.currentState!.validate()) return;
 
+    final confirmed = await showAppConfirmDialog(
+      context,
+      title: 'Enregistrer les modifications ?',
+      message: 'Vos informations de profil seront mises a jour.',
+      confirmLabel: 'Enregistrer',
+      icon: Icons.edit_outlined,
+      type: AppFeedbackType.info,
+    );
+    if (!confirmed) return;
+
     setState(() {
       _isSaving = true;
     });
 
-    await ServiceLocator.authService.updateProfile(
-      nom: _nomController.text.trim(),
-      prenom: _prenomController.text.trim(),
-      email: _emailController.text.trim(),
-      sexe: _selectedSexe,
-    );
+    try {
+      await ServiceLocator.authService.updateProfile(
+        nom: _nomController.text.trim(),
+        prenom: _prenomController.text.trim(),
+        email: _emailController.text.trim(),
+        sexe: _selectedSexe,
+      );
 
-    if (!mounted) return;
+      if (!mounted) return;
 
-    setState(() {
-      _isSaving = false;
-    });
-    Navigator.of(context).pop(true);
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text("Profil mis a jour"),
-        backgroundColor: AppColors.sauge,
-      ),
-    );
+      setState(() {
+        _isSaving = false;
+      });
+      Navigator.of(context).pop(true);
+      showAppNotification(
+        context,
+        title: 'Profil mis a jour',
+        message: "Vos informations de profil ont ete modifiees.",
+        type: AppFeedbackType.success,
+      );
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isSaving = false;
+        });
+        showAppNotification(
+          context,
+          title: 'Erreur',
+          message: "Erreur lors de la mise a jour : $e",
+          type: AppFeedbackType.error,
+        );
+      }
+    }
   }
 
   @override

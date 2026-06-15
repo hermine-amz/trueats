@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme.dart';
+import '../utils/image_url_helper.dart';
 
 class RestaurantLogo extends StatelessWidget {
   final String? logoUrl;
@@ -49,22 +50,13 @@ class RestaurantLogo extends StatelessWidget {
       return placeholder;
     }
 
-    final image =
-        logoUrl!.startsWith('http://') || logoUrl!.startsWith('https://')
-        ? Image.network(
-            logoUrl!,
-            width: size,
-            height: size,
-            fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) => placeholder,
-          )
-        : Image.asset(
-            logoUrl!,
-            width: size,
-            height: size,
-            fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) => placeholder,
-          );
+    final image = ImageUrlHelper.buildImage(
+      logoUrl,
+      width: size,
+      height: size,
+      fit: BoxFit.cover,
+      placeholder: placeholder,
+    );
 
     return ClipRRect(
       borderRadius: isCircular ? BorderRadius.circular(size / 2) : borderRadius,

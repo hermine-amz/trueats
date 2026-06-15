@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/services/interfaces.dart';
 import '../../core/services/service_locator.dart';
 import '../../core/theme.dart';
+import '../../core/widgets/app_feedback.dart';
 
 class RestaurantManagementScreen extends StatefulWidget {
   final Restaurant restaurant;
@@ -159,19 +160,31 @@ class _RestaurantManagementScreenState
                     ElevatedButton(
                       onPressed: () async {
                         final navigator = Navigator.of(context);
-                        final messenger = ScaffoldMessenger.of(context);
                         final name = nameController.text.trim();
                         final price = double.tryParse(
                           priceController.text.trim(),
                         );
 
                         if (name.isEmpty || price == null) {
-                          messenger.showSnackBar(
-                            const SnackBar(
-                              content: Text('Renseignez le nom et le prix.'),
-                            ),
+                          showAppNotification(
+                            context,
+                            title: 'Champs requis',
+                            message: 'Renseignez le nom et le prix.',
+                            type: AppFeedbackType.warning,
                           );
                           return;
+                        }
+
+                        if (plat != null) {
+                          final confirmed = await showAppConfirmDialog(
+                            context,
+                            title: 'Enregistrer les modifications ?',
+                            message: 'Les informations de ${plat.nom} seront mises a jour dans le menu.',
+                            confirmLabel: 'Enregistrer',
+                            icon: Icons.edit_outlined,
+                            type: AppFeedbackType.info,
+                          );
+                          if (!confirmed) return;
                         }
 
                         final dish = Plat(
@@ -196,6 +209,15 @@ class _RestaurantManagementScreenState
                         if (!mounted) return;
                         navigator.pop();
                         await _loadData();
+                        if (!mounted) return;
+                        showAppNotification(
+                          context,
+                          title: plat == null ? 'Plat ajoute' : 'Plat modifie',
+                          message: plat == null
+                              ? '$name a ete ajoute au menu.'
+                              : '$name a ete mis a jour.',
+                          type: AppFeedbackType.success,
+                        );
                       },
                       child: Text(plat == null ? 'Ajouter' : 'Enregistrer'),
                     ),
@@ -215,15 +237,27 @@ class _RestaurantManagementScreenState
   }
 
   Future<void> _removePlat(Plat plat) async {
-    final messenger = ScaffoldMessenger.of(context);
+    final confirmed = await showAppConfirmDialog(
+      context,
+      title: 'Retirer ce plat ?',
+      message: '${plat.nom} sera retire du menu.',
+      confirmLabel: 'Retirer',
+      icon: Icons.delete_outline_rounded,
+      type: AppFeedbackType.error,
+    );
+    if (!confirmed) return;
+
     await ServiceLocator.restaurantService.removePlatFromRestaurant(
       _restaurant.id,
       plat.id,
     );
     if (!mounted) return;
     await _loadData();
-    messenger.showSnackBar(
-      SnackBar(content: Text('${plat.nom} a ete retire du menu.')),
+    showAppNotification(
+      context,
+      title: 'Plat retire',
+      message: '${plat.nom} a ete retire du menu.',
+      type: AppFeedbackType.success,
     );
   }
 

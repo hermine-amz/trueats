@@ -45,5 +45,9 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>Cette application utilise la caméra pour scanner les QR Codes des tables des restaurants.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Cette application accède à vos photos pour ajouter le logo, la photo du restaurant et les images des plats.</string>
 </dict>
 </plist>

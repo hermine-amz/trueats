@@ -17,10 +17,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
+  // Le téléphone est séparé du préfixe pour simplifier la validation
+  final _telephoneController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
 
   String _selectedSexe = "Femme";
   bool _isLoading = false;
+  bool _obscurePassword = true;
+  bool _obscureConfirmPassword = true;
 
   @override
   void dispose() {
@@ -29,6 +33,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
+    _telephoneController.dispose();
     super.dispose();
   }
 
@@ -40,12 +45,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
     });
 
     try {
+      final tel = _telephoneController.text.trim();
+      // On envoie le numéro complet avec l'indicatif
+      final telephoneComplet = tel.isNotEmpty ? '+229$tel' : null;
+
       final success = await ServiceLocator.authService.register(
         nom: _nomController.text.trim(),
         prenom: _prenomController.text.trim(),
         email: _emailController.text.trim(),
         password: _passwordController.text,
         sexe: _selectedSexe,
+        telephone: telephoneComplet,
       );
 
       if (success && mounted) {
@@ -166,16 +176,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         Expanded(
                           child: _buildTextField(
                             controller: _prenomController,
-                            hintText: "Prenom",
+                            labelText: "Prénom",
+                            hintText: "Ex: Sophie",
                             icon: Icons.person_outline_rounded,
-                            validatorMessage: "Entrez votre prenom",
+                            validatorMessage: "Entrez votre prénom",
                           ),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
                           child: _buildTextField(
                             controller: _nomController,
-                            hintText: "Nom",
+                            labelText: "Nom",
+                            hintText: "Ex: Martin",
                             icon: Icons.badge_outlined,
                             validatorMessage: "Entrez votre nom",
                           ),
@@ -192,10 +204,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       items: const [
                         DropdownMenuItem(value: "Femme", child: Text("Femme")),
                         DropdownMenuItem(value: "Homme", child: Text("Homme")),
-                        DropdownMenuItem(
-                          value: "Non precise",
-                          child: Text("Prefere ne pas preciser"),
-                        ),
                       ],
                       onChanged: (value) {
                         if (value == null) return;
@@ -205,12 +213,45 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       },
                     ),
                     const SizedBox(height: 16),
+                    // Champ téléphone avec préfixe béninois fixe
+                    TextFormField(
+                      controller: _telephoneController,
+                      keyboardType: TextInputType.phone,
+                      textInputAction: TextInputAction.next,
+                      decoration: const InputDecoration(
+                        labelText: "Numéro de téléphone",
+                        hintText: "01 XX XX XX XX",
+                        prefixIcon: Icon(Icons.phone_outlined),
+                        // Le +229 est affiché en préfixe fixe — l'utilisateur
+                        // saisit juste les 10 chiffres locaux
+                        prefixText: "+229  ",
+                        prefixStyle: TextStyle(
+                          color: AppColors.terracotta,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 15,
+                        ),
+                      ),
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          // Le téléphone est optionnel
+                          return null;
+                        }
+                        // Format béninois : 01 + 8 chiffres = 10 chiffres
+                        final cleaned = value.replaceAll(' ', '');
+                        if (!RegExp(r'^01[0-9]{8}$').hasMatch(cleaned)) {
+                          return "Format invalide — ex: 0197123456";
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 16),
                     TextFormField(
                       controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
                       textInputAction: TextInputAction.next,
                       decoration: const InputDecoration(
-                        hintText: "marie@exemple.fr",
+                        labelText: "Adresse e-mail",
+                        hintText: "Ex: marie@exemple.fr",
                         prefixIcon: Icon(Icons.email_outlined),
                       ),
                       validator: (value) {
@@ -228,18 +269,32 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     const SizedBox(height: 16),
                     TextFormField(
                       controller: _passwordController,
-                      obscureText: true,
+                      obscureText: _obscurePassword,
                       textInputAction: TextInputAction.next,
-                      decoration: const InputDecoration(
-                        hintText: "Votre mot de passe",
-                        prefixIcon: Icon(Icons.lock_outline_rounded),
+                      decoration: InputDecoration(
+                        labelText: "Mot de passe",
+                        hintText: "Au moins 6 caractères",
+                        prefixIcon: const Icon(Icons.lock_outline_rounded),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _obscurePassword
+                                ? Icons.visibility_off_outlined
+                                : Icons.visibility_outlined,
+                            color: AppColors.grisTexte,
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              _obscurePassword = !_obscurePassword;
+                            });
+                          },
+                        ),
                       ),
                       validator: (value) {
                         if (value == null || value.isEmpty) {
                           return "Veuillez entrer votre mot de passe";
                         }
                         if (value.length < 6) {
-                          return "Le mot de passe doit faire au moins 6 caracteres";
+                          return "Le mot de passe doit faire au moins 6 caractères";
                         }
                         return null;
                       },
@@ -247,12 +302,26 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     const SizedBox(height: 16),
                     TextFormField(
                       controller: _confirmPasswordController,
-                      obscureText: true,
+                      obscureText: _obscureConfirmPassword,
                       textInputAction: TextInputAction.done,
                       onFieldSubmitted: (_) => _handleRegister(),
-                      decoration: const InputDecoration(
-                        hintText: "Confirmez le mot de passe",
-                        prefixIcon: Icon(Icons.lock_outline_rounded),
+                      decoration: InputDecoration(
+                        labelText: "Confirmer le mot de passe",
+                        hintText: "Ressaisissez le mot de passe",
+                        prefixIcon: const Icon(Icons.lock_outline_rounded),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _obscureConfirmPassword
+                                ? Icons.visibility_off_outlined
+                                : Icons.visibility_outlined,
+                            color: AppColors.grisTexte,
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              _obscureConfirmPassword = !_obscureConfirmPassword;
+                            });
+                          },
+                        ),
                       ),
                       validator: (value) {
                         if (value == null || value.isEmpty) {
@@ -321,6 +390,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   Widget _buildTextField({
     required TextEditingController controller,
+    required String labelText,
     required String hintText,
     required IconData icon,
     required String validatorMessage,
@@ -330,6 +400,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       keyboardType: TextInputType.name,
       textInputAction: TextInputAction.next,
       decoration: InputDecoration(
+        labelText: labelText,
         hintText: hintText,
         prefixIcon: Icon(icon),
       ),

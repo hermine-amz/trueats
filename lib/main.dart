@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'core/theme.dart';
+import 'core/services/service_locator.dart';
 import 'features/onboarding/onboarding_screen.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await ServiceLocator.init();
   runApp(const TruEatsApp());
 }
 

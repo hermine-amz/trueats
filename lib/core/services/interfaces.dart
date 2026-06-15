@@ -1,6 +1,8 @@
 import '../mock_data.dart';
 export '../mock_data.dart';
 
+import 'dart:io';
+
 class User {
   final int id;
   final String nom;
@@ -23,6 +25,42 @@ class User {
     required this.dateMaj,
     this.isActive = true,
   });
+
+  factory User.fromJson(Map<String, dynamic> json) {
+    // Map Laravel roles ('client', 'gerant', 'admin') to Flutter roles ('utilisateur', 'gerant', 'admin')
+    String roleMapped = json['role'] ?? 'utilisateur';
+    if (roleMapped == 'client') {
+      roleMapped = 'utilisateur';
+    }
+
+    final isActiveVal = json['compte_active'] == 1 || json['compte_active'] == true || (json['compte_active'] ?? true);
+
+    return User(
+      id: json['id'],
+      nom: json['nom'] ?? '',
+      prenom: json['prenom'] ?? '',
+      email: json['email'] ?? '',
+      role: roleMapped,
+      sexe: json['sexe'] ?? 'Non precise',
+      dateInscription: json['created_at'] != null ? DateTime.parse(json['created_at']) : DateTime.now(),
+      dateMaj: json['updated_at'] != null ? DateTime.parse(json['updated_at']) : DateTime.now(),
+      isActive: isActiveVal,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'nom': nom,
+      'prenom': prenom,
+      'email': email,
+      'role': role == 'utilisateur' ? 'client' : role,
+      'sexe': sexe,
+      'compte_active': isActive,
+      'created_at': dateInscription.toIso8601String(),
+      'updated_at': dateMaj.toIso8601String(),
+    };
+  }
 
   String get name {
     final fullName = '$prenom $nom'.trim();
@@ -66,6 +104,7 @@ abstract class AuthService {
     required String email,
     required String password,
     required String sexe,
+    String? telephone,
   });
   Future<void> updateProfile({
     required String nom,
@@ -75,6 +114,7 @@ abstract class AuthService {
   });
   Future<List<User>> getAllUsers();
   Future<void> setAccountActive(int userId, bool isActive);
+  Future<void> refreshCurrentUser();
 
   // Utilitaire pour basculer de role lors du developpement
   void setRole(String role);
@@ -102,6 +142,23 @@ abstract class RestaurantService {
 
   Future<List<Restaurant>> getRestaurantsByManager(int managerId);
   Future<Restaurant> createRestaurant(Restaurant restaurant);
+  Future<void> updateRestaurant({
+    required int id,
+    required String name,
+    required String address,
+    String? logoUrl,
+    String? photoUrl,
+  });
+  Future<String> uploadImage(File file, {required String type});
+  // Upload d'un document légal (PDF ou image)
+  Future<String> uploadDocument(File file, {required String type});
+  Future<List<PlatCategory>> getCategories();
+  Future<PlatCategory> getOrCreateCategory(String libelle);
+}
+
+abstract class AdminService {
+  Future<List<DemandeRestaurant>> getDemandes();
+  Future<void> validerDemande(int restaurantId, {required bool accepte, String? motifRejet});
 }
 
 abstract class ReviewService {

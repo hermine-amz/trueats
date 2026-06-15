@@ -1,3 +1,20 @@
+class PlatCategory {
+  final int id;
+  final String libelle;
+
+  const PlatCategory({
+    required this.id,
+    required this.libelle,
+  });
+
+  factory PlatCategory.fromJson(Map<String, dynamic> json) {
+    return PlatCategory(
+      id: json['id'] as int,
+      libelle: json['libelle'] as String? ?? '',
+    );
+  }
+}
+
 class Plat {
   final int id;
   final String nom;
@@ -5,6 +22,7 @@ class Plat {
   final double prix;
   final bool disponible;
   final String categorie; // ex: Entrée, Plat Principal, Dessert, Boisson
+  final String? imageUrl;
 
   const Plat({
     required this.id,
@@ -13,7 +31,39 @@ class Plat {
     required this.prix,
     required this.disponible,
     required this.categorie,
+    this.imageUrl,
   });
+
+  factory Plat.fromJson(Map<String, dynamic> json) {
+    String categoryName = 'Plats';
+    if (json['category'] != null && json['category']['libelle'] != null) {
+      categoryName = json['category']['libelle'];
+    } else if (json['categorie'] != null) {
+      categoryName = json['categorie'];
+    }
+    
+    return Plat(
+      id: json['id'],
+      nom: json['nom'] ?? '',
+      description: json['description'] ?? '',
+      prix: (json['prix'] as num?)?.toDouble() ?? 0.0,
+      disponible: json['disponible'] == 1 || json['disponible'] == true || (json['disponible'] ?? true),
+      categorie: categoryName,
+      imageUrl: json['image_url'],
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'nom': nom,
+      'description': description,
+      'prix': prix,
+      'disponible': disponible,
+      'categorie': categorie,
+      'image_url': imageUrl,
+    };
+  }
 
   Plat copyWith({
     int? id,
@@ -22,6 +72,7 @@ class Plat {
     double? prix,
     bool? disponible,
     String? categorie,
+    String? imageUrl,
   }) {
     return Plat(
       id: id ?? this.id,
@@ -30,6 +81,7 @@ class Plat {
       prix: prix ?? this.prix,
       disponible: disponible ?? this.disponible,
       categorie: categorie ?? this.categorie,
+      imageUrl: imageUrl ?? this.imageUrl,
     );
   }
 }
@@ -62,6 +114,56 @@ class Avis {
     required this.restaurantId,
     required this.restaurantNom,
   });
+
+  factory Avis.fromJson(Map<String, dynamic> json) {
+    final userJson = json['user'];
+    final restaurantJson = json['restaurant'];
+
+    String authorName = 'Utilisateur';
+    if (userJson != null) {
+      final prenom = userJson['prenom'] ?? '';
+      final nom = userJson['nom'] ?? '';
+      authorName = '$prenom $nom'.trim();
+      if (authorName.isEmpty) {
+        authorName = userJson['email']?.split('@')?.first ?? 'Utilisateur';
+      }
+    } else if (json['nom_auteur'] != null) {
+      authorName = json['nom_auteur'];
+    }
+
+    final lat = (json['lat_client'] as num?)?.toDouble() ?? 0.0;
+    final lon = (json['long_client'] as num?)?.toDouble() ?? 0.0;
+
+    return Avis(
+      id: json['id'],
+      nomAuteur: authorName,
+      note: json['note'] ?? 5,
+      commentaire: json['commentaire'] ?? '',
+      dateVisite: json['date_visite'] != null
+          ? DateTime.parse(json['date_visite'])
+          : (json['created_at'] != null ? DateTime.parse(json['created_at']) : DateTime.now()),
+      latClient: lat,
+      longClient: lon,
+      estPublie: json['est_publie'] == 1 || json['est_publie'] == true || (json['est_publie'] ?? true),
+      isVerified: lat != 0.0 && lon != 0.0,
+      photoUrl: json['photo_url'],
+      restaurantId: json['restaurant_id'],
+      restaurantNom: restaurantJson != null ? (restaurantJson['nom'] ?? 'Restaurant') : (json['restaurant_nom'] ?? 'Restaurant'),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'note': note,
+      'commentaire': commentaire,
+      'date_visite': dateVisite.toIso8601String(),
+      'lat_client': latClient,
+      'long_client': longClient,
+      'est_publie': estPublie,
+      'restaurant_id': restaurantId,
+    };
+  }
 
   Avis copyWith({
     int? id,
@@ -99,16 +201,26 @@ class Restaurant {
   final String nom;
   final String adresse;
   final String quartier;
-  final String categorie; // ex: Maquis, Café, Resto
-  final String typeCuisine; // ex: Africain, Brunch, Européen
+  final String categorie;
+  final String typeCuisine;
   final String? logoUrl;
+  final String? photoUrl;
   final double latitude;
   final double longitude;
   final String qrCode;
   final DateTime dateCreation;
   final List<Plat> menu;
-  final double rayonMetres; // Périmètre GPS de tolérance (100 - 200m)
+  // superficie en m² — le rayon GPS est calculé côté backend (sqrt(S/π) + marge)
+  final int? superficie;
+  final double rayonMetres; // rayon reçu du backend, utilisé pour vérif GPS
   final int? gerantId;
+  final bool estValide;
+  // Champs légaux (non affichés aux clients)
+  final String? cipUrl;
+  final String? ifuNumero;
+  final String? ifuAttestationUrl;
+  final String? rccmNumero;
+  final String? rccmExtraitUrl;
 
   const Restaurant({
     required this.id,
@@ -118,14 +230,75 @@ class Restaurant {
     required this.categorie,
     required this.typeCuisine,
     this.logoUrl,
+    this.photoUrl,
     required this.latitude,
     required this.longitude,
     required this.qrCode,
     required this.dateCreation,
     required this.menu,
+    this.superficie,
     this.rayonMetres = 150.0,
     this.gerantId,
+    this.estValide = true,
+    this.cipUrl,
+    this.ifuNumero,
+    this.ifuAttestationUrl,
+    this.rccmNumero,
+    this.rccmExtraitUrl,
   });
+
+  factory Restaurant.fromJson(Map<String, dynamic> json) {
+    final menuList = <Plat>[];
+    if (json['plats'] != null) {
+      for (final item in json['plats']) {
+        menuList.add(Plat.fromJson(item));
+      }
+    }
+
+    return Restaurant(
+      id: json['id'],
+      nom: json['nom'] ?? '',
+      adresse: json['adresse'] ?? '',
+      quartier: json['quartier'] ?? 'Cotonou',
+      categorie: json['categorie'] ?? 'Restaurant',
+      typeCuisine: json['type_cuisine'] ?? 'Cuisine',
+      logoUrl: json['logo_url'],
+      photoUrl: json['photo_url'],
+      latitude: (json['latitude'] as num?)?.toDouble() ?? 0.0,
+      longitude: (json['longitude'] as num?)?.toDouble() ?? 0.0,
+      qrCode: json['qr_code_identifier'] ?? json['qr_code'] ?? '',
+      dateCreation: json['created_at'] != null ? DateTime.parse(json['created_at']) : DateTime.now(),
+      menu: menuList,
+      superficie: json['superficie'] as int?,
+      rayonMetres: (json['rayon_validation'] as num?)?.toDouble() ?? (json['rayon_metres'] as num?)?.toDouble() ?? 150.0,
+      gerantId: json['gerant_id'],
+      estValide: json['est_valide'] == 1 || json['est_valide'] == true,
+      cipUrl: json['cip_url'],
+      ifuNumero: json['ifu_numero'],
+      ifuAttestationUrl: json['ifu_attestation_url'],
+      rccmNumero: json['rccm_numero'],
+      rccmExtraitUrl: json['rccm_extrait_url'],
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'nom': nom,
+      'adresse': adresse,
+      'quartier': quartier,
+      'categorie': categorie,
+      'type_cuisine': typeCuisine,
+      'logo_url': logoUrl,
+      'photo_url': photoUrl,
+      'latitude': latitude,
+      'longitude': longitude,
+      'qr_code_identifier': qrCode,
+      'gerant_id': gerantId,
+      'superficie': superficie,
+      'rayon_validation': rayonMetres,
+    };
+  }
 
   Restaurant copyWith({
     int? id,
@@ -135,13 +308,21 @@ class Restaurant {
     String? categorie,
     String? typeCuisine,
     String? logoUrl,
+    String? photoUrl,
     double? latitude,
     double? longitude,
     String? qrCode,
     DateTime? dateCreation,
     List<Plat>? menu,
+    int? superficie,
     double? rayonMetres,
     int? gerantId,
+    bool? estValide,
+    String? cipUrl,
+    String? ifuNumero,
+    String? ifuAttestationUrl,
+    String? rccmNumero,
+    String? rccmExtraitUrl,
   }) {
     return Restaurant(
       id: id ?? this.id,
@@ -151,13 +332,81 @@ class Restaurant {
       categorie: categorie ?? this.categorie,
       typeCuisine: typeCuisine ?? this.typeCuisine,
       logoUrl: logoUrl ?? this.logoUrl,
+      photoUrl: photoUrl ?? this.photoUrl,
       latitude: latitude ?? this.latitude,
       longitude: longitude ?? this.longitude,
       qrCode: qrCode ?? this.qrCode,
       dateCreation: dateCreation ?? this.dateCreation,
       menu: menu ?? this.menu,
+      superficie: superficie ?? this.superficie,
       rayonMetres: rayonMetres ?? this.rayonMetres,
       gerantId: gerantId ?? this.gerantId,
+      estValide: estValide ?? this.estValide,
+      cipUrl: cipUrl ?? this.cipUrl,
+      ifuNumero: ifuNumero ?? this.ifuNumero,
+      ifuAttestationUrl: ifuAttestationUrl ?? this.ifuAttestationUrl,
+      rccmNumero: rccmNumero ?? this.rccmNumero,
+      rccmExtraitUrl: rccmExtraitUrl ?? this.rccmExtraitUrl,
+    );
+  }
+}
+
+// Modèle pour les demandes d'inscription vues depuis la console admin
+class DemandeRestaurant {
+  final int id;
+  final String nom;
+  final String adresse;
+  final String? quartier;
+  final String? categorie;
+  final String? typeCuisine;
+  final int? superficie;
+  final double latitude;
+  final double longitude;
+  final DateTime createdAt;
+  final String? cipUrl;
+  final String? ifuNumero;
+  final String? ifuAttestationUrl;
+  final String? rccmNumero;
+  final String? rccmExtraitUrl;
+  final Map<String, dynamic>? gerant;
+
+  const DemandeRestaurant({
+    required this.id,
+    required this.nom,
+    required this.adresse,
+    this.quartier,
+    this.categorie,
+    this.typeCuisine,
+    this.superficie,
+    required this.latitude,
+    required this.longitude,
+    required this.createdAt,
+    this.cipUrl,
+    this.ifuNumero,
+    this.ifuAttestationUrl,
+    this.rccmNumero,
+    this.rccmExtraitUrl,
+    this.gerant,
+  });
+
+  factory DemandeRestaurant.fromJson(Map<String, dynamic> json) {
+    return DemandeRestaurant(
+      id: json['id'],
+      nom: json['nom'] ?? '',
+      adresse: json['adresse'] ?? '',
+      quartier: json['quartier'],
+      categorie: json['categorie'],
+      typeCuisine: json['type_cuisine'],
+      superficie: json['superficie'] as int?,
+      latitude: (json['latitude'] as num?)?.toDouble() ?? 0.0,
+      longitude: (json['longitude'] as num?)?.toDouble() ?? 0.0,
+      createdAt: json['created_at'] != null ? DateTime.parse(json['created_at']) : DateTime.now(),
+      cipUrl: json['cip_url'],
+      ifuNumero: json['ifu_numero'],
+      ifuAttestationUrl: json['ifu_attestation_url'],
+      rccmNumero: json['rccm_numero'],
+      rccmExtraitUrl: json['rccm_extrait_url'],
+      gerant: json['gerant'] as Map<String, dynamic>?,
     );
   }
 }
@@ -176,6 +425,32 @@ class ExplorationList {
     required this.isShared,
     required this.iconTypes,
   });
+
+  factory ExplorationList.fromJson(Map<String, dynamic> json) {
+    final list = <Restaurant>[];
+    if (json['adresses'] != null) {
+      for (final item in json['adresses']) {
+        list.add(Restaurant.fromJson(item));
+      }
+    }
+    return ExplorationList(
+      id: json['id'] ?? 0,
+      nom: json['nom'] ?? 'À explorer',
+      adresses: list,
+      isShared: json['is_shared'] == 1 || json['is_shared'] == true || (json['is_shared'] ?? false),
+      iconTypes: json['icon_types'] != null ? List<String>.from(json['icon_types']) : ['⭐'],
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'nom': nom,
+      'adresses': adresses.map((e) => e.toJson()).toList(),
+      'is_shared': isShared,
+      'icon_types': iconTypes,
+    };
+  }
 }
 
 class Signalement {
@@ -194,6 +469,51 @@ class Signalement {
     required this.raison,
     required this.dateSignalement,
   });
+
+  factory Signalement.fromJson(Map<String, dynamic> json) {
+    final userJson = json['user'];
+    String authorName = 'Utilisateur';
+    if (userJson != null) {
+      final prenom = userJson['prenom'] ?? '';
+      final nom = userJson['nom'] ?? '';
+      authorName = '$prenom $nom'.trim();
+      if (authorName.isEmpty) {
+        authorName = userJson['email']?.split('@')?.first ?? 'Utilisateur';
+      }
+    }
+
+    return Signalement(
+      id: json['id'],
+      avisId: json['avis_id'],
+      avis: json['avis'] != null ? Avis.fromJson(json['avis']) : Avis(
+        id: json['avis_id'],
+        nomAuteur: 'Auteur',
+        note: 5,
+        commentaire: 'Avis inconnu',
+        dateVisite: DateTime.now(),
+        latClient: 0.0,
+        longClient: 0.0,
+        estPublie: true,
+        isVerified: false,
+        restaurantId: 0,
+        restaurantNom: 'Restaurant',
+      ),
+      auteurSignalement: authorName,
+      raison: json['libelle'] ?? 'Contenu inopportun',
+      dateSignalement: json['created_at'] != null ? DateTime.parse(json['created_at']) : DateTime.now(),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'avis_id': avisId,
+      'avis': avis.toJson(),
+      'auteur_signalement': auteurSignalement,
+      'raison': raison,
+      'date_signalement': dateSignalement.toIso8601String(),
+    };
+  }
 }
 
 // Données statiques initiales

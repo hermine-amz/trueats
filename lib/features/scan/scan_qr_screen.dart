@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
 
 import '../../core/services/interfaces.dart';
 import '../../core/services/service_locator.dart';
@@ -16,7 +17,9 @@ class ScanQrScreen extends StatefulWidget {
 class _ScanQrScreenState extends State<ScanQrScreen> {
   User? _currentUser;
   bool _isScanning = true;
+  bool _isLoading = false;
   Restaurant? _scannedRestaurant;
+  final MobileScannerController _scannerController = MobileScannerController();
 
   @override
   void initState() {
@@ -24,109 +27,82 @@ class _ScanQrScreenState extends State<ScanQrScreen> {
     _currentUser = ServiceLocator.authService.currentUser;
   }
 
-  Future<void> _requestLocationPermission() async {
-    final bool? allowed = await showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      builder: (dialogContext) {
-        return Dialog(
-          backgroundColor: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(24),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Container(
-                  width: 56,
-                  height: 56,
-                  decoration: const BoxDecoration(
-                    color: AppColors.orangeClair,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.location_on_outlined,
-                    color: AppColors.terracotta,
-                    size: 28,
-                  ),
-                ),
-                const SizedBox(height: 18),
-                Text(
-                  'Autoriser la localisation ?',
-                  style: Theme.of(
-                    dialogContext,
-                  ).textTheme.displaySmall?.copyWith(fontSize: 18),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  'TruEats utilise votre position pour certifier que vous êtes bien sur place.',
-                  style: Theme.of(
-                    dialogContext,
-                  ).textTheme.bodyMedium?.copyWith(height: 1.4),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 24),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: () => Navigator.of(dialogContext).pop(false),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                        ),
-                        child: const Text('Refuser'),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: () => Navigator.of(dialogContext).pop(true),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.terracotta,
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                        ),
-                        child: const Text('Autoriser'),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
+  @override
+  void dispose() {
+    _scannerController.dispose();
+    super.dispose();
+  }
 
-    if (allowed != true) {
-      return;
-    }
-
-    final granted = await ServiceLocator.locationService.requestPermission();
+  Future<void> _handleQrCodeScanned(String code) async {
+    // Demander la permission de géolocalisation
+    final bool granted = await ServiceLocator.locationService.requestPermission();
     if (!granted) {
       _onResetScan();
       return;
     }
 
-    await _simulateScanningSuccess();
+    setState(() {
+      _isLoading = true;
+    });
+
+    _scannerController.stop();
+
+    try {
+      var rest = await ServiceLocator.restaurantService.getRestaurantByQrCode(code);
+      
+      // Si on est connectés au backend réel et que le code fictif n'existe pas
+      if (rest == null && code == 'trueats_restaurant_1') {
+        rest = await ServiceLocator.restaurantService.getRestaurantByQrCode('BISTRO_GOURMET_QR');
+      }
+
+      // Récupération de secours
+      if (rest == null && code == 'trueats_restaurant_1') {
+        try {
+          final list = await ServiceLocator.restaurantService.getRestaurants();
+          if (list.isNotEmpty) {
+            rest = list.first;
+          }
+        } catch (_) {}
+      }
+
+      if (mounted) {
+        if (rest != null) {
+          setState(() {
+            _scannedRestaurant = rest;
+            _isScanning = false;
+            _isLoading = false;
+          });
+        } else {
+          setState(() {
+            _isLoading = false;
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Restaurant non trouvé pour ce QR Code."),
+              backgroundColor: AppColors.rougeSignalement,
+            ),
+          );
+          _onResetScan();
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Erreur de chargement: ${e.toString()}"),
+            backgroundColor: AppColors.rougeSignalement,
+          ),
+        );
+        _onResetScan();
+      }
+    }
   }
 
   Future<void> _simulateScanningSuccess() async {
-    setState(() {
-      _isScanning = false;
-    });
-
-    final rest = await ServiceLocator.restaurantService.getRestaurantByQrCode(
-      'trueats_restaurant_1',
-    );
-    if (mounted) {
-      setState(() {
-        _scannedRestaurant = rest;
-      });
-    }
+    await _handleQrCodeScanned('trueats_restaurant_1');
   }
 
   void _onResetScan() {
@@ -134,11 +110,31 @@ class _ScanQrScreenState extends State<ScanQrScreen> {
       _isScanning = true;
       _scannedRestaurant = null;
     });
+    _scannerController.start();
   }
 
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
+
+    if (_isLoading) {
+      return const Scaffold(
+        backgroundColor: AppColors.creme,
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(color: AppColors.terracotta),
+              SizedBox(height: 16),
+              Text(
+                'Récupération des informations du restaurant...',
+                style: TextStyle(color: AppColors.marronFonce),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
 
     if (_isScanning) {
       return Scaffold(
@@ -156,11 +152,17 @@ class _ScanQrScreenState extends State<ScanQrScreen> {
                       border: Border.all(color: AppColors.sauge, width: 3),
                       borderRadius: BorderRadius.circular(24),
                     ),
-                    alignment: Alignment.center,
-                    child: const Icon(
-                      Icons.qr_code_2_rounded,
-                      color: Colors.white,
-                      size: 150,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(21),
+                      child: MobileScanner(
+                        controller: _scannerController,
+                        onDetect: (capture) async {
+                          final List<Barcode> barcodes = capture.barcodes;
+                          if (barcodes.isNotEmpty && barcodes.first.rawValue != null) {
+                            await _handleQrCodeScanned(barcodes.first.rawValue!);
+                          }
+                        },
+                      ),
                     ),
                   ),
                   const SizedBox(height: 24),
@@ -179,7 +181,7 @@ class _ScanQrScreenState extends State<ScanQrScreen> {
               left: 40,
               right: 40,
               child: ElevatedButton(
-                onPressed: _requestLocationPermission,
+                onPressed: _simulateScanningSuccess,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.sauge,
                   foregroundColor: Colors.white,
@@ -255,7 +257,15 @@ class _ScanQrScreenState extends State<ScanQrScreen> {
               const SizedBox(height: 28),
               InkWell(
                 onTap: () {
-                  if (restaurant == null) return;
+                  if (restaurant == null) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text("Le restaurant n'est pas chargé."),
+                        backgroundColor: AppColors.rougeSignalement,
+                      ),
+                    );
+                    return;
+                  }
                   Navigator.of(context).push(
                     MaterialPageRoute(
                       builder: (context) => RestaurantDetailsScreen(
@@ -334,7 +344,15 @@ class _ScanQrScreenState extends State<ScanQrScreen> {
                     return;
                   }
 
-                  if (restaurant == null) return;
+                  if (restaurant == null) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text("Le restaurant n'est pas chargé."),
+                        backgroundColor: AppColors.rougeSignalement,
+                      ),
+                    );
+                    return;
+                  }
                   Navigator.of(context).push(
                     MaterialPageRoute(
                       builder: (context) =>

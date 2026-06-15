@@ -20,6 +20,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   User? _currentUser;
   int _exploreCount = 0;
   int _publishedReviewsCount = 0;
+  List<Restaurant> _pendingRestaurants = [];
   bool _isLoading = true;
 
   @override
@@ -29,15 +30,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _loadProfile() async {
+    // On rafraichit d'abord le user depuis l'API pour avoir le role a jour
+    try {
+      await ServiceLocator.authService.refreshCurrentUser();
+    } catch (_) {}
+
     final user = ServiceLocator.authService.currentUser;
     final lists = await ServiceLocator.restaurantService.getExplorationLists();
     final reviews = await ServiceLocator.reviewService.getAllReviews();
+    final managedRestaurants = user == null || user.role == 'visiteur'
+        ? <Restaurant>[]
+        : await ServiceLocator.restaurantService.getRestaurantsByManager(
+            user.id,
+          );
     final exploreLists = lists.where(_isExploreList).toList();
+    final pendingRestaurants = managedRestaurants
+        .where((restaurant) => !restaurant.estValide)
+        .toList();
 
     if (!mounted) return;
 
     setState(() {
       _currentUser = user;
+      _pendingRestaurants = pendingRestaurants;
       _exploreCount = exploreLists.fold<int>(
         0,
         (total, list) => total + list.adresses.length,
@@ -73,12 +88,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _onInscriptionRestaurantTap() async {
-    final registered = await Navigator.of(context).push<bool>(
+    await Navigator.of(context).push<bool>(
       MaterialPageRoute(builder: (context) => const RegisterRestaurantScreen()),
     );
-    if (registered == true) {
-      _loadProfile();
-    }
+    // Qu'il y ait eu soumission ou non, on recharge le profil
+    // pour mettre a jour le role si l'admin a entre-temps valide un restaurant
+    _loadProfile();
   }
 
   Future<void> _logout() async {
@@ -281,6 +296,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             "Ajouter un nouveau restaurant",
                             _onInscriptionRestaurantTap,
                           ),
+                          const SizedBox(height: 36),
+                        ] else if (_currentUser?.role == 'utilisateur') ...[
+                          if (_pendingRestaurants.isEmpty)
+                            _buildBecomeGerantBanner(context)
+                          else
+                            _buildPendingRestaurantBanner(context),
                           const SizedBox(height: 36),
                         ] else
                           const SizedBox(height: 36),
@@ -532,6 +553,136 @@ class _ProfileScreenState extends State<ProfileScreen> {
       color: const Color(0xFFFDFBF7),
       borderRadius: BorderRadius.circular(20),
       border: Border.all(color: AppColors.grisBordure),
+    );
+  }
+
+  // Banniere "Devenir gerant" visible pour les simples clients inscrits.
+  Widget _buildBecomeGerantBanner(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+
+    return GestureDetector(
+      onTap: _onInscriptionRestaurantTap,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFFF9EFE7), Color(0xFFFDFBF7)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: AppColors.terracotta.withValues(alpha: 0.35)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 52,
+              height: 52,
+              decoration: const BoxDecoration(
+                color: AppColors.orangeClair,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.storefront_outlined,
+                color: AppColors.terracotta,
+                size: 26,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "Proposer mon restaurant",
+                    style: textTheme.titleLarge?.copyWith(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.marronFonce,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    "Soumettez votre etablissement pour validation. Votre compte passera gerant apres accord admin.",
+                    style: textTheme.bodyMedium?.copyWith(
+                      fontSize: 12,
+                      color: AppColors.grisTexte,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            const Icon(
+              Icons.arrow_forward_ios,
+              size: 14,
+              color: AppColors.terracotta,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPendingRestaurantBanner(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    final count = _pendingRestaurants.length;
+    final firstRestaurant = _pendingRestaurants.first;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFDFBF7),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.grisBordure),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 52,
+            height: 52,
+            decoration: const BoxDecoration(
+              color: AppColors.cremeFonce,
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.hourglass_top_outlined,
+              color: AppColors.terracotta,
+              size: 26,
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  count == 1
+                      ? "Demande en attente"
+                      : "$count demandes en attente",
+                  style: textTheme.titleLarge?.copyWith(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.marronFonce,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  count == 1
+                      ? "${firstRestaurant.nom} est en cours de validation par l admin."
+                      : "Vos restaurants soumis sont en cours de validation par l admin.",
+                  style: textTheme.bodyMedium?.copyWith(
+                    fontSize: 12,
+                    color: AppColors.grisTexte,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 

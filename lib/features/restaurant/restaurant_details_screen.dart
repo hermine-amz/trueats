@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/services/interfaces.dart';
 import '../../core/services/service_locator.dart';
 import '../../core/theme.dart';
+import '../../core/utils/image_url_helper.dart';
 import '../../core/widgets/restaurant_logo.dart';
 import '../../core/widgets/review_card.dart';
 
@@ -25,17 +26,32 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
   late int _activeTabIndex;
   List<Avis> _reviews = [];
   bool _isLoadingReviews = true;
+  Restaurant? _freshRestaurant;
+
+  Restaurant get _restaurant => _freshRestaurant ?? widget.restaurant;
 
   @override
   void initState() {
     super.initState();
     _activeTabIndex = widget.initialTabIndex;
     _loadReviews();
+    _loadFreshRestaurant();
+  }
+
+  Future<void> _loadFreshRestaurant() async {
+    try {
+      final fresh = await ServiceLocator.restaurantService.getRestaurantById(widget.restaurant.id);
+      if (fresh != null && mounted) {
+        setState(() {
+          _freshRestaurant = fresh;
+        });
+      }
+    } catch (_) {}
   }
 
   Future<void> _loadReviews() async {
     final list = await ServiceLocator.reviewService.getReviewsForRestaurant(
-      widget.restaurant.id,
+      _restaurant.id,
     );
     if (mounted) {
       setState(() {
@@ -70,7 +86,7 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
 
     await ServiceLocator.restaurantService.addRestaurantToExploration(
       exploreList.first.id,
-      widget.restaurant.id,
+      _restaurant.id,
     );
   }
 
@@ -100,8 +116,8 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     RestaurantLogo(
-                      logoUrl: widget.restaurant.logoUrl,
-                      restaurantName: widget.restaurant.nom,
+                      logoUrl: _restaurant.logoUrl,
+                      restaurantName: _restaurant.nom,
                       size: 64,
                       borderRadius: BorderRadius.circular(18),
                     ),
@@ -111,7 +127,7 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            widget.restaurant.nom,
+                            _restaurant.nom,
                             style: textTheme.titleLarge?.copyWith(
                               fontSize: 17,
                               fontWeight: FontWeight.bold,
@@ -119,14 +135,14 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            '${widget.restaurant.categorie} · ${widget.restaurant.typeCuisine}',
+                            '${_restaurant.categorie} · ${_restaurant.typeCuisine}',
                             style: textTheme.bodyMedium?.copyWith(
                               color: AppColors.grisTexte,
                             ),
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            widget.restaurant.adresse,
+                            _restaurant.adresse,
                             style: textTheme.bodyMedium?.copyWith(
                               color: AppColors.marronFonce,
                               height: 1.35,
@@ -150,7 +166,7 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
                       messenger.showSnackBar(
                         SnackBar(
                           content: Text(
-                            '${widget.restaurant.nom} ajouté à À explorer',
+                            '${_restaurant.nom} ajouté à À explorer',
                           ),
                           backgroundColor: AppColors.sauge,
                         ),
@@ -186,69 +202,90 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
                   Container(
                     width: double.infinity,
                     color: AppColors.terracotta,
-                    padding: const EdgeInsets.fromLTRB(16, 24, 16, 24),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            CircleAvatar(
-                              backgroundColor: Colors.black26,
-                              child: IconButton(
-                                icon: const Icon(
-                                  Icons.arrow_back,
-                                  color: Colors.white,
-                                ),
-                                onPressed: () => Navigator.of(context).pop(),
-                              ),
+                        if (_restaurant.photoUrl != null &&
+                            _restaurant.photoUrl!.trim().isNotEmpty)
+                          AspectRatio(
+                            aspectRatio: 16 / 9,
+                            child: ImageUrlHelper.buildImage(
+                              _restaurant.photoUrl,
+                              fit: BoxFit.cover,
+                              placeholder: const SizedBox.shrink(),
                             ),
-                            IconButton(
-                              icon: const Icon(
-                                Icons.bookmark_add_outlined,
-                                color: Colors.white,
-                              ),
-                              onPressed: _showAddToExploreDialog,
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 18),
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            RestaurantLogo(
-                              logoUrl: widget.restaurant.logoUrl,
-                              restaurantName: widget.restaurant.nom,
-                              size: 72,
-                              isCircular: true,
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                          ),
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 24, 16, 24),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Text(
-                                    '${widget.restaurant.categorie.toUpperCase()} · ${widget.restaurant.typeCuisine.toUpperCase()}',
-                                    style: textTheme.labelLarge?.copyWith(
-                                      color: Colors.white.withValues(
-                                        alpha: 0.8,
+                                  CircleAvatar(
+                                    backgroundColor: Colors.black26,
+                                    child: IconButton(
+                                      icon: const Icon(
+                                        Icons.arrow_back,
+                                        color: Colors.white,
                                       ),
-                                      fontSize: 12,
-                                      letterSpacing: 1.5,
+                                      onPressed: () =>
+                                          Navigator.of(context).pop(),
                                     ),
                                   ),
-                                  const SizedBox(height: 6),
-                                  Text(
-                                    widget.restaurant.nom,
-                                    style: textTheme.displayLarge?.copyWith(
+                                  IconButton(
+                                    icon: const Icon(
+                                      Icons.bookmark_add_outlined,
                                       color: Colors.white,
-                                      fontSize: 32,
+                                    ),
+                                    onPressed: _showAddToExploreDialog,
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 18),
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  RestaurantLogo(
+                                    logoUrl: _restaurant.logoUrl,
+                                    restaurantName: _restaurant.nom,
+                                    size: 72,
+                                    isCircular: true,
+                                  ),
+                                  const SizedBox(width: 16),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          '${_restaurant.categorie.toUpperCase()} · ${_restaurant.typeCuisine.toUpperCase()}',
+                                          style: textTheme.labelLarge?.copyWith(
+                                            color: Colors.white.withValues(
+                                              alpha: 0.8,
+                                            ),
+                                            fontSize: 12,
+                                            letterSpacing: 1.5,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 6),
+                                        Text(
+                                          _restaurant.nom,
+                                          style: textTheme.displayLarge
+                                              ?.copyWith(
+                                            color: Colors.white,
+                                            fontSize: 32,
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
                                 ],
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ],
                     ),
@@ -318,8 +355,10 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
     final textTheme = Theme.of(context).textTheme;
 
     if (_activeTabIndex == 0) {
+      final availableMenu =
+          _restaurant.menu.where((plat) => plat.disponible).toList();
       final groupedMenu = <String, List<Plat>>{};
-      for (final plat in widget.restaurant.menu) {
+      for (final plat in availableMenu) {
         groupedMenu.putIfAbsent(plat.categorie, () => <Plat>[]).add(plat);
       }
 
@@ -365,6 +404,25 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    if (plat.imageUrl != null && plat.imageUrl!.trim().isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(right: 14),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(14),
+                          child: ImageUrlHelper.buildImage(
+                            plat.imageUrl,
+                            width: 72,
+                            height: 72,
+                            fit: BoxFit.cover,
+                            placeholder: Container(
+                              width: 72,
+                              height: 72,
+                              color: AppColors.cremeFonce,
+                              child: const Icon(Icons.restaurant_outlined),
+                            ),
+                          ),
+                        ),
+                      ),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -450,7 +508,7 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
         _buildInfoRow(
           Icons.location_on_outlined,
           'Adresse',
-          widget.restaurant.adresse,
+          _restaurant.adresse,
         ),
         const SizedBox(height: 16),
         _buildInfoRow(

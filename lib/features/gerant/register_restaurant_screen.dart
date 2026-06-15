@@ -1,5 +1,7 @@
+import 'dart:io';
 import 'dart:math';
 
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/services/interfaces.dart';
@@ -23,7 +25,20 @@ class _RegisterRestaurantScreenState extends State<RegisterRestaurantScreen> {
   final _typeCuisineController = TextEditingController();
   final _latitudeController = TextEditingController();
   final _longitudeController = TextEditingController();
-  final _rayonController = TextEditingController(text: '150');
+  final _superficieController = TextEditingController(text: '150');
+  
+  // Nouveaux champs textes pour IFU et RCCM
+  final _ifuNumeroController = TextEditingController();
+  final _rccmNumeroController = TextEditingController();
+
+  // Nouveaux fichiers pour CIP, Attestation IFU, Extrait RCCM
+  File? _cipFile;
+  String? _cipFileName;
+  File? _ifuAttestationFile;
+  String? _ifuAttestationFileName;
+  File? _rccmExtraitFile;
+  String? _rccmExtraitFileName;
+
   bool _isSubmitting = false;
 
   @override
@@ -35,8 +50,98 @@ class _RegisterRestaurantScreenState extends State<RegisterRestaurantScreen> {
     _typeCuisineController.dispose();
     _latitudeController.dispose();
     _longitudeController.dispose();
-    _rayonController.dispose();
+    _superficieController.dispose();
+    _ifuNumeroController.dispose();
+    _rccmNumeroController.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickFile(String documentType) async {
+    try {
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['jpg', 'jpeg', 'png', 'pdf'],
+      );
+
+      if (result != null && result.files.single.path != null) {
+        setState(() {
+          final file = File(result.files.single.path!);
+          final name = result.files.single.name;
+          if (documentType == 'cip') {
+            _cipFile = file;
+            _cipFileName = name;
+          } else if (documentType == 'ifu') {
+            _ifuAttestationFile = file;
+            _ifuAttestationFileName = name;
+          } else if (documentType == 'rccm') {
+            _rccmExtraitFile = file;
+            _rccmExtraitFileName = name;
+          }
+        });
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Erreur lors de la selection du fichier : $e'),
+          backgroundColor: AppColors.rougeSignalement,
+        ),
+      );
+    }
+  }
+
+  Widget _buildFilePickerTile({
+    required String label,
+    required String? fileName,
+    required VoidCallback onTap,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.grisBordure),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.marronFonce,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  fileName ?? 'Aucun fichier selectionne (PDF, JPG, PNG)',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: fileName != null ? AppColors.sauge : AppColors.grisTexte,
+                    fontStyle: fileName != null ? FontStyle.normal : FontStyle.italic,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          ElevatedButton(
+            onPressed: onTap,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: fileName != null ? AppColors.vertClair : AppColors.cremeFonce,
+              foregroundColor: fileName != null ? AppColors.sauge : AppColors.marronFonce,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+            ),
+            child: Text(fileName != null ? 'Modifier' : 'Choisir'),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _submit() async {
@@ -44,17 +149,71 @@ class _RegisterRestaurantScreenState extends State<RegisterRestaurantScreen> {
     final currentUser = ServiceLocator.authService.currentUser;
     if (currentUser == null) return;
 
+    final latitude = double.tryParse(_latitudeController.text.trim());
+    final longitude = double.tryParse(_longitudeController.text.trim());
+    final superficie = int.tryParse(_superficieController.text.trim());
+
+    if (latitude == null || longitude == null || superficie == null || superficie < 10) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Coordonnees GPS ou superficie invalides (min 10 m²).')),
+      );
+      return;
+    }
+
+    // Validation des documents obligatoires pour l'approbation
+    if (_cipFile == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Le CIP du gerant est obligatoire.')),
+      );
+      return;
+    }
+
+    if (_ifuNumeroController.text.trim().isEmpty || _ifuAttestationFile == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Le numero IFU et l attestation IFU sont requis.')),
+      );
+      return;
+    }
+
+    if (_rccmNumeroController.text.trim().isEmpty || _rccmExtraitFile == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Le numero RCCM et l extrait RCCM sont requis.')),
+      );
+      return;
+    }
+
     setState(() {
       _isSubmitting = true;
     });
 
-    final latitude = double.tryParse(_latitudeController.text.trim());
-    final longitude = double.tryParse(_longitudeController.text.trim());
-    final rayon = double.tryParse(_rayonController.text.trim());
+    String? cipUrl;
+    String? ifuAttestationUrl;
+    String? rccmExtraitUrl;
 
-    if (latitude == null || longitude == null || rayon == null) {
+    try {
+      // Note de soutenance : On televerse les documents justificatifs sensibles
+      // sur le serveur Laravel qui restreint l'accès aux administrateurs.
+      cipUrl = await ServiceLocator.restaurantService.uploadDocument(
+        _cipFile!,
+        type: 'cip',
+      );
+      
+      ifuAttestationUrl = await ServiceLocator.restaurantService.uploadDocument(
+        _ifuAttestationFile!,
+        type: 'ifu_attestation',
+      );
+      
+      rccmExtraitUrl = await ServiceLocator.restaurantService.uploadDocument(
+        _rccmExtraitFile!,
+        type: 'rccm_extrait',
+      );
+    } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Coordonnees GPS ou rayon invalides.')),
+        SnackBar(
+          content: Text('Erreur transfert documents : $e'),
+          backgroundColor: AppColors.rougeSignalement,
+        ),
       );
       setState(() {
         _isSubmitting = false;
@@ -79,22 +238,43 @@ class _RegisterRestaurantScreenState extends State<RegisterRestaurantScreen> {
       qrCode: 'trueats_restaurant_${Random().nextInt(100000)}',
       dateCreation: DateTime.now(),
       menu: const [],
-      rayonMetres: rayon,
+      superficie: superficie,
+      rayonMetres: 150.0, // sera recalcule cote backend, requis par le modele
       gerantId: currentUser.id,
+      cipUrl: cipUrl,
+      ifuNumero: _ifuNumeroController.text.trim(),
+      ifuAttestationUrl: ifuAttestationUrl,
+      rccmNumero: _rccmNumeroController.text.trim(),
+      rccmExtraitUrl: rccmExtraitUrl,
+      estValide: false, // creation en attente de validation
     );
 
-    await ServiceLocator.restaurantService.createRestaurant(newRestaurant);
-
-    if (!mounted) return;
-    setState(() {
-      _isSubmitting = false;
-    });
-    Navigator.of(context).pop(true);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('${newRestaurant.nom} a ete inscrit avec succes.'),
-      ),
-    );
+    try {
+      await ServiceLocator.restaurantService.createRestaurant(newRestaurant);
+      
+      if (!mounted) return;
+      setState(() {
+        _isSubmitting = false;
+      });
+      Navigator.of(context).pop(true);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${newRestaurant.nom} a ete soumis pour validation admin.'),
+          backgroundColor: AppColors.sauge,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isSubmitting = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Erreur creation restaurant : $e'),
+          backgroundColor: AppColors.rougeSignalement,
+        ),
+      );
+    }
   }
 
   @override
@@ -199,12 +379,85 @@ class _RegisterRestaurantScreenState extends State<RegisterRestaurantScreen> {
                 ),
                 const SizedBox(height: 16),
                 _buildTextField(
-                  controller: _rayonController,
-                  label: 'Rayon autorise (m)',
+                  controller: _superficieController,
+                  label: 'Superficie (m²)',
                   keyboardType: TextInputType.number,
-                  hintText: '100 à 200',
+                  hintText: 'Ex: 150',
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Veuillez saisir la superficie.';
+                    }
+                    final val = int.tryParse(value.trim());
+                    if (val == null || val < 10) {
+                      return 'Veuillez saisir une superficie superieure a 10 m².';
+                    }
+                    return null;
+                  },
                 ),
                 const SizedBox(height: 24),
+                
+                Text(
+                  'Documents justificatifs',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    color: AppColors.marronFonce,
+                    fontSize: 18,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Pour valider votre inscription, vous devez fournir les documents officiels beninois.',
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+                const SizedBox(height: 16),
+
+                _buildFilePickerTile(
+                  label: 'CIP du gerant (PDF ou Image)',
+                  fileName: _cipFileName,
+                  onTap: () => _pickFile('cip'),
+                ),
+                const SizedBox(height: 16),
+
+                _buildTextField(
+                  controller: _ifuNumeroController,
+                  label: 'Numero IFU (10 chiffres)',
+                  keyboardType: TextInputType.number,
+                  hintText: 'Ex: 3201234567',
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Veuillez saisir le numero IFU.';
+                    }
+                    if (!RegExp(r'^[0-9]{10}$').hasMatch(value.trim())) {
+                      return 'Le numero IFU doit comporter exactement 10 chiffres.';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 12),
+                _buildFilePickerTile(
+                  label: 'Attestation IFU (PDF ou Image)',
+                  fileName: _ifuAttestationFileName,
+                  onTap: () => _pickFile('ifu'),
+                ),
+                const SizedBox(height: 16),
+
+                _buildTextField(
+                  controller: _rccmNumeroController,
+                  label: 'Numero de registre (RCCM)',
+                  hintText: 'Ex: RB/COT/20 B 12345',
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Veuillez saisir le numero RCCM.';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 12),
+                _buildFilePickerTile(
+                  label: 'Extrait RCCM (PDF ou Image)',
+                  fileName: _rccmExtraitFileName,
+                  onTap: () => _pickFile('rccm'),
+                ),
+                const SizedBox(height: 28),
                 ElevatedButton(
                   onPressed: _isSubmitting ? null : _submit,
                   child: _isSubmitting

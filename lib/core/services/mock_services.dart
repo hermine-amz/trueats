@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:math';
 
 import 'interfaces.dart';
@@ -96,6 +97,7 @@ class MockAuthService implements AuthService {
     required String email,
     required String password,
     required String sexe,
+    String? telephone,
   }) async {
     await Future.delayed(const Duration(milliseconds: 600));
     _currentUser = User(
@@ -162,6 +164,11 @@ class MockAuthService implements AuthService {
       _currentUser = updatedUser;
       _authController.add(_currentUser);
     }
+  }
+
+  @override
+  Future<void> refreshCurrentUser() async {
+    await Future.delayed(const Duration(milliseconds: 150));
   }
 
   @override
@@ -357,6 +364,70 @@ class MockRestaurantService implements RestaurantService {
     _restaurants.add(newRestaurant);
     return newRestaurant;
   }
+
+  @override
+  Future<void> updateRestaurant({
+    required int id,
+    required String name,
+    required String address,
+    String? logoUrl,
+    String? photoUrl,
+  }) async {
+    await Future.delayed(const Duration(milliseconds: 250));
+    final index = _restaurants.indexWhere((item) => item.id == id);
+    if (index != -1) {
+      _restaurants[index] = _restaurants[index].copyWith(
+        nom: name,
+        adresse: address,
+        logoUrl: logoUrl,
+        photoUrl: photoUrl,
+      );
+    }
+  }
+
+  @override
+  Future<String> uploadImage(File file, {required String type}) async {
+    await Future.delayed(const Duration(milliseconds: 300));
+    return file.path;
+  }
+
+  @override
+  Future<String> uploadDocument(File file, {required String type}) async {
+    await Future.delayed(const Duration(milliseconds: 300));
+    return file.path;
+  }
+
+  static const List<PlatCategory> _defaultCategories = [
+    PlatCategory(id: 1, libelle: 'Pizzas'),
+    PlatCategory(id: 2, libelle: 'Burgers'),
+    PlatCategory(id: 3, libelle: 'Boissons'),
+    PlatCategory(id: 4, libelle: 'Plats Principaux'),
+    PlatCategory(id: 5, libelle: 'Accompagnements'),
+    PlatCategory(id: 6, libelle: 'Brunch'),
+    PlatCategory(id: 7, libelle: 'Cafétéria'),
+    PlatCategory(id: 8, libelle: 'Desserts'),
+  ];
+
+  @override
+  Future<List<PlatCategory>> getCategories() async {
+    await Future.delayed(const Duration(milliseconds: 150));
+    return List<PlatCategory>.from(_defaultCategories);
+  }
+
+  @override
+  Future<PlatCategory> getOrCreateCategory(String libelle) async {
+    await Future.delayed(const Duration(milliseconds: 150));
+    final trimmed = libelle.trim();
+    for (final category in _defaultCategories) {
+      if (category.libelle.toLowerCase() == trimmed.toLowerCase()) {
+        return category;
+      }
+    }
+    return PlatCategory(
+      id: _defaultCategories.length + 1,
+      libelle: trimmed,
+    );
+  }
 }
 
 class MockReviewService implements ReviewService {
@@ -458,6 +529,9 @@ class MockLocationService implements LocationService {
   // Simule une presence proche du Maquis Chez Tanti.
   static bool isSimulatingNear = true;
 
+  // Permet de surcharger dynamiquement la position simulee pour les tests.
+  static Map<String, double>? mockLocationOverride;
+
   @override
   Future<bool> requestPermission() async {
     await Future.delayed(const Duration(milliseconds: 400));
@@ -473,6 +547,9 @@ class MockLocationService implements LocationService {
   @override
   Future<Map<String, double>> getCurrentLocation() async {
     await Future.delayed(const Duration(milliseconds: 500));
+    if (mockLocationOverride != null) {
+      return mockLocationOverride!;
+    }
     if (isSimulatingNear) {
       return {"latitude": 6.35710, "longitude": 2.40890};
     }
@@ -499,5 +576,21 @@ class MockLocationService implements LocationService {
 
   double _toRadians(double degree) {
     return degree * pi / 180.0;
+  }
+}
+
+class MockAdminService implements AdminService {
+  final List<DemandeRestaurant> _demandes = [];
+
+  @override
+  Future<List<DemandeRestaurant>> getDemandes() async {
+    await Future.delayed(const Duration(milliseconds: 200));
+    return _demandes;
+  }
+
+  @override
+  Future<void> validerDemande(int restaurantId, {required bool accepte, String? motifRejet}) async {
+    await Future.delayed(const Duration(milliseconds: 200));
+    _demandes.removeWhere((element) => element.id == restaurantId);
   }
 }
