@@ -39,86 +39,30 @@ void showAppNotification(
   final overlay = Overlay.maybeOf(context);
   if (overlay == null) return;
 
-  final color = _feedbackColor(type);
-  final entry = OverlayEntry(
-    builder: (context) {
+  final topPadding = MediaQuery.of(context).padding.top;
+
+  late final OverlayEntry entry;
+  entry = OverlayEntry(
+    builder: (dialogContext) {
       return Positioned(
-        top: MediaQuery.of(context).padding.top + 14,
+        top: topPadding + 14,
         left: 18,
         right: 18,
         child: SafeArea(
           bottom: false,
           child: Material(
             color: Colors.transparent,
-            child: TweenAnimationBuilder<double>(
-              tween: Tween(begin: -18, end: 0),
-              duration: const Duration(milliseconds: 220),
-              curve: Curves.easeOutCubic,
-              builder: (context, offset, child) {
-                return Transform.translate(
-                  offset: Offset(0, offset),
-                  child: AnimatedOpacity(
-                    opacity: offset == 0 ? 1 : 0.94,
-                    duration: const Duration(milliseconds: 180),
-                    child: child,
-                  ),
-                );
-              },
-              child: Container(
-                constraints: const BoxConstraints(maxWidth: 640),
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFFFCF7),
-                  borderRadius: BorderRadius.circular(18),
-                  border: Border.all(color: color.withValues(alpha: 0.22)),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.12),
-                      blurRadius: 24,
-                      offset: const Offset(0, 10),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      width: 38,
-                      height: 38,
-                      decoration: BoxDecoration(
-                        color: color.withValues(alpha: 0.12),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(_feedbackIcon(type), color: color, size: 21),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          if (title != null) ...[
-                            Text(
-                              title,
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .titleLarge
-                                  ?.copyWith(fontSize: 15),
-                            ),
-                            const SizedBox(height: 2),
-                          ],
-                          Text(
-                            message,
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodyMedium
-                                ?.copyWith(color: AppColors.marronFonce),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
+            child: Align(
+              alignment: Alignment.topCenter,
+              child: _AppNotificationWidget(
+                message: message,
+                title: title,
+                type: type,
+                onDismiss: () {
+                  try {
+                    entry.remove();
+                  } catch (_) {}
+                },
               ),
             ),
           ),
@@ -128,9 +72,131 @@ void showAppNotification(
   );
 
   overlay.insert(entry);
-  Future.delayed(const Duration(seconds: 3), () {
-    if (entry.mounted) entry.remove();
+}
+
+class _AppNotificationWidget extends StatefulWidget {
+  final String message;
+  final String? title;
+  final AppFeedbackType type;
+  final VoidCallback onDismiss;
+
+  const _AppNotificationWidget({
+    required this.message,
+    required this.title,
+    required this.type,
+    required this.onDismiss,
   });
+
+  @override
+  State<_AppNotificationWidget> createState() => _AppNotificationWidgetState();
+}
+
+class _AppNotificationWidgetState extends State<_AppNotificationWidget>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _animation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 250),
+    );
+    _animation = CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeOutCubic,
+    );
+    _controller.forward();
+
+    // Auto dismiss after 3 seconds
+    Future.delayed(const Duration(seconds: 3), () {
+      if (mounted) {
+        _controller.reverse().then((_) {
+          if (mounted) {
+            widget.onDismiss();
+          }
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final color = _feedbackColor(widget.type);
+    final textTheme = Theme.of(context).textTheme;
+
+    return AnimatedBuilder(
+      animation: _animation,
+      builder: (context, child) {
+        final double opacity = _animation.value;
+        final double yOffset = (1 - _animation.value) * -18;
+        return Opacity(
+          opacity: opacity,
+          child: Transform.translate(
+            offset: Offset(0, yOffset),
+            child: child,
+          ),
+        );
+      },
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 640),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFFFCF7),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: color.withValues(alpha: 0.22)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.12),
+              blurRadius: 24,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.12),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(_feedbackIcon(widget.type), color: color, size: 21),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (widget.title != null) ...[
+                    Text(
+                      widget.title!,
+                      style: textTheme.titleLarge?.copyWith(fontSize: 15),
+                    ),
+                    const SizedBox(height: 2),
+                  ],
+                  Text(
+                    widget.message,
+                    style: textTheme.bodyMedium?.copyWith(color: AppColors.marronFonce),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 Future<bool> showAppConfirmDialog(
