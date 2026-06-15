@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 import 'dart:math';
 
 import 'interfaces.dart';
@@ -386,13 +385,13 @@ class MockRestaurantService implements RestaurantService {
   }
 
   @override
-  Future<String> uploadImage(File file, {required String type}) async {
+  Future<String> uploadImage(XFile file, {required String type}) async {
     await Future.delayed(const Duration(milliseconds: 300));
     return file.path;
   }
 
   @override
-  Future<String> uploadDocument(File file, {required String type}) async {
+  Future<String> uploadDocument(XFile file, {required String type}) async {
     await Future.delayed(const Duration(milliseconds: 300));
     return file.path;
   }

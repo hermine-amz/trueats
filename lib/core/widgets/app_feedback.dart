@@ -175,7 +175,7 @@ Future<bool> showAppConfirmDialog(
                       children: [
                         Text(
                           title,
-                          style: Theme.of(context)
+                          style: Theme.of(dialogContext)
                               .textTheme
                               .displaySmall
                               ?.copyWith(fontSize: 20),
@@ -183,7 +183,7 @@ Future<bool> showAppConfirmDialog(
                         const SizedBox(height: 6),
                         Text(
                           message,
-                          style: Theme.of(context).textTheme.bodyMedium,
+                          style: Theme.of(dialogContext).textTheme.bodyMedium,
                         ),
                       ],
                     ),

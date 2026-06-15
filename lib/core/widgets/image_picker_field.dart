@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -9,7 +10,7 @@ import '../utils/image_url_helper.dart';
 class ImagePickerField extends StatelessWidget {
   final String label;
   final String? imageUrl;
-  final File? localFile;
+  final XFile? localFile;
   final bool isUploading;
   final VoidCallback onPick;
   final VoidCallback? onRemove;
@@ -30,12 +31,21 @@ class ImagePickerField extends StatelessWidget {
 
     Widget preview;
     if (localFile != null) {
-      preview = Image.file(
-        localFile!,
-        width: 88,
-        height: 88,
-        fit: BoxFit.cover,
-      );
+      if (kIsWeb) {
+        preview = Image.network(
+          localFile!.path,
+          width: 88,
+          height: 88,
+          fit: BoxFit.cover,
+        );
+      } else {
+        preview = Image.file(
+          File(localFile!.path),
+          width: 88,
+          height: 88,
+          fit: BoxFit.cover,
+        );
+      }
     } else if (imageUrl != null && imageUrl!.trim().isNotEmpty) {
       preview = ImageUrlHelper.buildImage(
         imageUrl,

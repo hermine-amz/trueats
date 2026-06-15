@@ -1,8 +1,9 @@
-import 'dart:io';
 import 'dart:math';
 
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../core/services/interfaces.dart';
 import '../../core/services/service_locator.dart';
@@ -32,11 +33,11 @@ class _RegisterRestaurantScreenState extends State<RegisterRestaurantScreen> {
   final _rccmNumeroController = TextEditingController();
 
   // Nouveaux fichiers pour CIP, Attestation IFU, Extrait RCCM
-  File? _cipFile;
+  XFile? _cipFile;
   String? _cipFileName;
-  File? _ifuAttestationFile;
+  XFile? _ifuAttestationFile;
   String? _ifuAttestationFileName;
-  File? _rccmExtraitFile;
+  XFile? _rccmExtraitFile;
   String? _rccmExtraitFileName;
 
   bool _isSubmitting = false;
@@ -63,21 +64,32 @@ class _RegisterRestaurantScreenState extends State<RegisterRestaurantScreen> {
         allowedExtensions: ['jpg', 'jpeg', 'png', 'pdf'],
       );
 
-      if (result != null && result.files.single.path != null) {
-        setState(() {
-          final file = File(result.files.single.path!);
-          final name = result.files.single.name;
-          if (documentType == 'cip') {
-            _cipFile = file;
-            _cipFileName = name;
-          } else if (documentType == 'ifu') {
-            _ifuAttestationFile = file;
-            _ifuAttestationFileName = name;
-          } else if (documentType == 'rccm') {
-            _rccmExtraitFile = file;
-            _rccmExtraitFileName = name;
+      if (result != null) {
+        final platformFile = result.files.single;
+        final name = platformFile.name;
+        XFile? xFile;
+        if (kIsWeb) {
+          if (platformFile.bytes != null) {
+            xFile = XFile.fromData(platformFile.bytes!, name: name);
           }
-        });
+        } else if (platformFile.path != null) {
+          xFile = XFile(platformFile.path!);
+        }
+
+        if (xFile != null) {
+          setState(() {
+            if (documentType == 'cip') {
+              _cipFile = xFile;
+              _cipFileName = name;
+            } else if (documentType == 'ifu') {
+              _ifuAttestationFile = xFile;
+              _ifuAttestationFileName = name;
+            } else if (documentType == 'rccm') {
+              _rccmExtraitFile = xFile;
+              _rccmExtraitFileName = name;
+            }
+          });
+        }
       }
     } catch (e) {
       if (!mounted) return;

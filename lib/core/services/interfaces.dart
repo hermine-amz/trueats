@@ -1,7 +1,8 @@
 import '../mock_data.dart';
 export '../mock_data.dart';
 
-import 'dart:io';
+import 'package:image_picker/image_picker.dart';
+export 'package:image_picker/image_picker.dart';
 
 class User {
   final int id;
@@ -149,9 +150,9 @@ abstract class RestaurantService {
     String? logoUrl,
     String? photoUrl,
   });
-  Future<String> uploadImage(File file, {required String type});
+  Future<String> uploadImage(XFile file, {required String type});
   // Upload d'un document légal (PDF ou image)
-  Future<String> uploadDocument(File file, {required String type});
+  Future<String> uploadDocument(XFile file, {required String type});
   Future<List<PlatCategory>> getCategories();
   Future<PlatCategory> getOrCreateCategory(String libelle);
 }

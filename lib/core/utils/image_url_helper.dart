@@ -62,8 +62,8 @@ class ImageUrlHelper {
 
     final trimmed = url.trim();
 
-    if (isNetworkPath(trimmed)) {
-      final resolved = resolve(trimmed);
+    if (isNetworkPath(trimmed) || (kIsWeb && trimmed.startsWith('blob:'))) {
+      final resolved = trimmed.startsWith('blob:') ? trimmed : resolve(trimmed);
       return Image.network(
         resolved,
         width: width,
@@ -72,6 +72,9 @@ class ImageUrlHelper {
         errorBuilder: (_, __, ___) => placeholder ?? const Icon(Icons.broken_image),
       );
     } else {
+      if (kIsWeb) {
+        return placeholder ?? const Icon(Icons.broken_image);
+      }
       return Image.file(
         File(trimmed),
         width: width,

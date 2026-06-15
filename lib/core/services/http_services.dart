@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'interfaces.dart';
@@ -154,13 +155,13 @@ class ApiClient {
     }
   }
 
-  static Future<String> uploadImage(File file, {required String type}) async {
+  static Future<String> uploadImage(XFile file, {required String type}) async {
     return uploadFile(file, endpoint: '/upload/image', fieldName: 'image', type: type);
   }
 
-  // Méthode générique pour tout upload multipart
+  // Méthode générique pour tout upload multipart compatible Web
   static Future<String> uploadFile(
-    File file, {
+    XFile file, {
     required String endpoint,
     required String fieldName,
     required String type,
@@ -175,9 +176,21 @@ class ApiClient {
         request.headers['Authorization'] = 'Bearer $_token';
       }
       request.fields['type'] = type;
-      request.files.add(
-        await http.MultipartFile.fromPath(fieldName, file.path),
-      );
+
+      if (kIsWeb) {
+        final bytes = await file.readAsBytes();
+        request.files.add(
+          http.MultipartFile.fromBytes(
+            fieldName,
+            bytes,
+            filename: file.name,
+          ),
+        );
+      } else {
+        request.files.add(
+          await http.MultipartFile.fromPath(fieldName, file.path),
+        );
+      }
 
       final streamed = await request.send();
       final response = await http.Response.fromStream(streamed);
@@ -667,12 +680,12 @@ class HttpRestaurantService implements RestaurantService {
   }
 
   @override
-  Future<String> uploadImage(File file, {required String type}) async {
+  Future<String> uploadImage(XFile file, {required String type}) async {
     return ApiClient.uploadImage(file, type: type);
   }
 
   @override
-  Future<String> uploadDocument(File file, {required String type}) async {
+  Future<String> uploadDocument(XFile file, {required String type}) async {
     // Upload multipart vers /upload/document avec le champ 'document'
     return ApiClient.uploadFile(file, endpoint: '/upload/document', fieldName: 'document', type: type);
   }
