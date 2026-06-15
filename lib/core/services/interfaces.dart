@@ -1,3 +1,9 @@
+// Note de soutenance : Clean Architecture
+// Le projet est structuré selon les principes de Clean Architecture pour découpler l'UI des sources de données :
+// - interfaces.dart et les modèles dans mock_data.dart représentent la couche Domain (contrats et logique métier pure)
+// - http_services.dart et mock_services.dart représentent la couche Data (communication API / base locale)
+// - Les écrans dans lib/features/ représentent la couche Presentation (UI)
+
 import '../mock_data.dart';
 export '../mock_data.dart';
 
@@ -160,6 +166,8 @@ abstract class RestaurantService {
 abstract class AdminService {
   Future<List<DemandeRestaurant>> getDemandes();
   Future<void> validerDemande(int restaurantId, {required bool accepte, String? motifRejet});
+  Future<Map<String, dynamic>> getStats();
+  Future<void> deleteUser(int userId);
 }
 
 abstract class ReviewService {

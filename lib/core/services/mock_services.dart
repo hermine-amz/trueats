@@ -592,4 +592,33 @@ class MockAdminService implements AdminService {
     await Future.delayed(const Duration(milliseconds: 200));
     _demandes.removeWhere((element) => element.id == restaurantId);
   }
+
+  @override
+  Future<Map<String, dynamic>> getStats() async {
+    await Future.delayed(const Duration(milliseconds: 200));
+    return {
+      'users': {
+        'total': 10,
+        'clients': 6,
+        'gerants': 3,
+        'admins': 1,
+      },
+      'restaurants': {
+        'total': 4,
+        'valides': 3,
+        'en_attente': 1,
+        'bloques': 0,
+      },
+      'avis': {
+        'total': 15,
+        'signales': 2,
+        'note_moyenne': 4.2,
+      }
+    };
+  }
+
+  @override
+  Future<void> deleteUser(int userId) async {
+    await Future.delayed(const Duration(milliseconds: 200));
+  }
 }

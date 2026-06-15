@@ -812,4 +812,22 @@ class HttpAdminService implements AdminService {
       },
     );
   }
+
+  @override
+  Future<Map<String, dynamic>> getStats() async {
+    try {
+      final data = await ApiClient.get('/admin/stats');
+      if (data is Map<String, dynamic>) {
+        return data;
+      }
+      return {};
+    } catch (e) {
+      return {};
+    }
+  }
+
+  @override
+  Future<void> deleteUser(int userId) async {
+    await ApiClient.delete('/admin/users/$userId');
+  }
 }
