@@ -5,6 +5,7 @@ import '../../core/services/http_services.dart';
 import '../../core/services/interfaces.dart';
 import '../../core/services/service_locator.dart';
 import '../../core/theme.dart';
+import '../../core/utils/image_url_helper.dart';
 import '../../core/widgets/app_feedback.dart';
 
 class AdminConsole extends StatefulWidget {
@@ -119,10 +120,7 @@ class _AdminConsoleState extends State<AdminConsole> {
   }
 
   String _getFullUrl(String? path) {
-    if (path == null) return '';
-    if (path.startsWith('http')) return path;
-    final base = ApiClient.baseUrl.replaceAll('/api', '');
-    return '$base$path';
+    return ImageUrlHelper.resolve(path);
   }
 
   void _viewDocument(String? url, String title) {

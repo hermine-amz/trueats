@@ -17,7 +17,9 @@ class ImageUrlHelper {
     return trimmed.startsWith('http://') ||
         trimmed.startsWith('https://') ||
         trimmed.startsWith('/storage') ||
-        trimmed.startsWith('storage/');
+        trimmed.startsWith('storage/') ||
+        trimmed.startsWith('/api/storage') ||
+        trimmed.startsWith('api/storage');
   }
 
   static String resolve(String? url) {
@@ -25,14 +27,16 @@ class ImageUrlHelper {
       return '';
     }
 
-    final trimmed = url.trim();
+    String trimmed = url.trim();
 
     if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
       if (!kIsWeb && Platform.isAndroid && trimmed.contains('localhost')) {
-        return trimmed.replaceFirst('localhost', '10.0.2.2');
+        trimmed = trimmed.replaceFirst('localhost', '10.0.2.2');
+      } else if (!kIsWeb && Platform.isAndroid && trimmed.contains('127.0.0.1')) {
+        trimmed = trimmed.replaceFirst('127.0.0.1', '10.0.2.2');
       }
-      if (!kIsWeb && Platform.isAndroid && trimmed.contains('127.0.0.1')) {
-        return trimmed.replaceFirst('127.0.0.1', '10.0.2.2');
+      if (trimmed.contains('/storage/')) {
+        trimmed = trimmed.replaceFirst('/storage/', '/api/storage/');
       }
       return trimmed;
     }
@@ -41,6 +45,12 @@ class ImageUrlHelper {
     final origin = apiBase.endsWith('/api')
         ? apiBase.substring(0, apiBase.length - 4)
         : apiBase;
+
+    if (trimmed.startsWith('/storage/')) {
+      trimmed = '/api/storage/${trimmed.substring(9)}';
+    } else if (trimmed.startsWith('storage/')) {
+      trimmed = '/api/storage/${trimmed.substring(8)}';
+    }
 
     if (trimmed.startsWith('/')) {
       return '$origin$trimmed';
