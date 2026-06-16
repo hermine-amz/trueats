@@ -49,6 +49,20 @@ class _HomeScreenState extends State<HomeScreen> {
     _loadRestaurants();
   }
 
+  String _getAvatarAsset(String? role, String? sexe) {
+    final isMale = sexe?.toLowerCase().trim() == 'masculin' || sexe?.toLowerCase().trim() == 'homme';
+    switch (role) {
+      case 'admin':
+        return isMale ? 'assets/avatar_admin_homme.png' : 'assets/avatar_admin_femme.png';
+      case 'gerant':
+        return isMale ? 'assets/avatar_gerant_homme.png' : 'assets/avatar_gerant_femme.png';
+      case 'client':
+      case 'utilisateur':
+      default:
+        return isMale ? 'assets/avatar_client_homme.png' : 'assets/avatar_client_femme.png';
+    }
+  }
+
   Future<void> _loadRestaurants() async {
     List<Restaurant> list = _query.trim().isEmpty
         ? await ServiceLocator.restaurantService.getRestaurants()
@@ -140,16 +154,19 @@ class _HomeScreenState extends State<HomeScreen> {
                             GestureDetector(
                               onTap: widget.onProfileTap,
                               child: Container(
-                                width: 44,
-                                height: 44,
-                                decoration: const BoxDecoration(
-                                  color: Colors.white,
+                                decoration: BoxDecoration(
                                   shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: Colors.white,
+                                    width: 1.5,
+                                  ),
                                 ),
-                                child: const Icon(
-                                  Icons.person,
-                                  color: AppColors.terracotta,
-                                  size: 24,
+                                child: CircleAvatar(
+                                  radius: 20,
+                                  backgroundColor: AppColors.cremeFonce,
+                                  backgroundImage: AssetImage(
+                                    _getAvatarAsset(_currentUser?.role, _currentUser?.sexe),
+                                  ),
                                 ),
                               ),
                             ),

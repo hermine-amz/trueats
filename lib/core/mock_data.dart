@@ -199,6 +199,8 @@ class Avis {
 class Restaurant {
   final int id;
   final String nom;
+  final String? telephone;
+  final String? horaires;
   final String adresse;
   final String quartier;
   final String categorie;
@@ -228,6 +230,8 @@ class Restaurant {
   const Restaurant({
     required this.id,
     required this.nom,
+    this.telephone,
+    this.horaires,
     required this.adresse,
     required this.quartier,
     required this.categorie,
@@ -263,6 +267,8 @@ class Restaurant {
     return Restaurant(
       id: json['id'],
       nom: json['nom'] ?? '',
+      telephone: json['telephone'],
+      horaires: json['horaires'],
       adresse: json['adresse'] ?? '',
       quartier: json['quartier'] ?? 'Cotonou',
       categorie: json['categorie'] ?? 'Restaurant',
@@ -292,6 +298,8 @@ class Restaurant {
     return {
       'id': id,
       'nom': nom,
+      'telephone': telephone,
+      'horaires': horaires,
       'adresse': adresse,
       'quartier': quartier,
       'categorie': categorie,
@@ -311,6 +319,8 @@ class Restaurant {
   Restaurant copyWith({
     int? id,
     String? nom,
+    String? telephone,
+    String? horaires,
     String? adresse,
     String? quartier,
     String? categorie,
@@ -337,6 +347,8 @@ class Restaurant {
     return Restaurant(
       id: id ?? this.id,
       nom: nom ?? this.nom,
+      telephone: telephone ?? this.telephone,
+      horaires: horaires ?? this.horaires,
       adresse: adresse ?? this.adresse,
       quartier: quartier ?? this.quartier,
       categorie: categorie ?? this.categorie,

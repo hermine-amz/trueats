@@ -9,6 +9,8 @@ import '../../core/widgets/app_feedback.dart';
 import '../../core/widgets/image_picker_field.dart';
 import 'gerant_dashboard.dart';
 import 'register_restaurant_screen.dart';
+import '../../core/widgets/restaurant_logo.dart';
+import '../restaurant/restaurant_details_screen.dart';
 
 class RestaurantManagementScreen extends StatefulWidget {
   final Restaurant restaurant;
@@ -119,9 +121,20 @@ class _RestaurantManagementScreenState
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Text(
-                      plat == null ? "Ajouter un plat" : "Modifier le plat",
-                      style: Theme.of(dialogContext).textTheme.displaySmall,
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          plat == null ? "Ajouter un plat" : "Modifier le plat",
+                          style: Theme.of(dialogContext).textTheme.displaySmall,
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close_rounded),
+                          onPressed: () => Navigator.of(context).pop(),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 16),
                     TextField(
@@ -337,6 +350,8 @@ class _RestaurantManagementScreenState
   Future<void> _showRestaurantEditSheet(Restaurant restaurant) async {
     final nameController = TextEditingController(text: restaurant.nom);
     final addressController = TextEditingController(text: restaurant.adresse);
+    final phoneController = TextEditingController(text: restaurant.telephone ?? '');
+    final hoursController = TextEditingController(text: restaurant.horaires ?? '');
 
     XFile? localLogoFile;
     String? currentLogoUrl = restaurant.logoUrl;
@@ -367,9 +382,20 @@ class _RestaurantManagementScreenState
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Text(
-                      "Modifier le restaurant",
-                      style: Theme.of(dialogContext).textTheme.displaySmall,
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          "Modifier le restaurant",
+                          style: Theme.of(dialogContext).textTheme.displaySmall,
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close_rounded),
+                          onPressed: () => Navigator.of(context).pop(),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 16),
                     TextField(
@@ -380,7 +406,31 @@ class _RestaurantManagementScreenState
                     const SizedBox(height: 12),
                     TextField(
                       controller: addressController,
-                      decoration: const InputDecoration(labelText: "Adresse"),
+                      maxLines: 4,
+                      minLines: 2,
+                      decoration: const InputDecoration(
+                        labelText: "Itinéraire",
+                        hintText: "Décrivez le chemin pour aller...",
+                      ),
+                      enabled: !isSaving,
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: phoneController,
+                      decoration: const InputDecoration(
+                        labelText: "Téléphone",
+                        hintText: "Ex: +229 21 30 40 50",
+                      ),
+                      keyboardType: TextInputType.phone,
+                      enabled: !isSaving,
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: hoursController,
+                      decoration: const InputDecoration(
+                        labelText: "Horaires d'ouverture",
+                        hintText: "Ex: Lundi - Dimanche : 11h00 - 23h00",
+                      ),
                       enabled: !isSaving,
                     ),
                     const SizedBox(height: 16),
@@ -479,6 +529,8 @@ class _RestaurantManagementScreenState
                             id: restaurant.id,
                             name: name,
                             address: address,
+                            telephone: phoneController.text.trim().isEmpty ? null : phoneController.text.trim(),
+                            horaires: hoursController.text.trim().isEmpty ? null : hoursController.text.trim(),
                             logoUrl: uploadedLogoUrl,
                             photoUrl: uploadedPhotoUrl,
                           );
@@ -536,12 +588,12 @@ class _RestaurantManagementScreenState
                                     final willArchive = !restaurant.estArchive;
                                     final confirmed = await showAppConfirmDialog(
                                       dialogContext,
-                                      title: willArchive ? "Cacher le restaurant ?" : "Afficher le restaurant ?",
+                                      title: willArchive ? "Archiver le restaurant ?" : "Désarchiver le restaurant ?",
                                       message: willArchive
-                                          ? "Votre restaurant sera masqué de la boutique pour les clients, mais restera visible sur votre espace de gestion."
-                                          : "Votre restaurant redeviendra visible pour les clients dans la boutique.",
-                                      confirmLabel: willArchive ? "Cacher" : "Afficher",
-                                      icon: willArchive ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                                          ? "Votre restaurant sera archivé et masqué de la boutique pour les clients, mais restera visible sur votre espace de gestion."
+                                          : "Votre restaurant sera désarchivé et redeviendra visible pour les clients dans la boutique.",
+                                      confirmLabel: willArchive ? "Archiver" : "Désarchiver",
+                                      icon: willArchive ? Icons.archive_outlined : Icons.unarchive_outlined,
                                       type: AppFeedbackType.warning,
                                     );
                                     if (!confirmed) return;
@@ -567,10 +619,10 @@ class _RestaurantManagementScreenState
                                       if (!mounted) return;
                                       showAppNotification(
                                         context,
-                                        title: willArchive ? "Restaurant masqué" : "Restaurant visible",
+                                        title: willArchive ? "Restaurant archivé" : "Restaurant désarchivé",
                                         message: willArchive
-                                            ? "Le restaurant a été masqué avec succès."
-                                            : "Le restaurant est à nouveau visible.",
+                                            ? "Le restaurant a été archivé avec succès."
+                                            : "Le restaurant a été désarchivé.",
                                         type: AppFeedbackType.success,
                                       );
                                     } catch (e) {
@@ -587,12 +639,12 @@ class _RestaurantManagementScreenState
                                     }
                                   },
                             icon: Icon(
-                              restaurant.estArchive ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                              restaurant.estArchive ? Icons.unarchive_outlined : Icons.archive_outlined,
                               size: 16,
                               color: AppColors.terracotta,
                             ),
                             label: Text(
-                              restaurant.estArchive ? "Afficher" : "Cacher",
+                              restaurant.estArchive ? "Désarchiver" : "Archiver",
                               style: const TextStyle(color: AppColors.terracotta),
                             ),
                             style: OutlinedButton.styleFrom(
@@ -675,6 +727,8 @@ class _RestaurantManagementScreenState
 
     nameController.dispose();
     addressController.dispose();
+    phoneController.dispose();
+    hoursController.dispose();
   }
 
   Future<void> _removePlat(Plat plat) async {
@@ -874,7 +928,11 @@ class _RestaurantManagementScreenState
               const SizedBox(height: 10),
               _buildDetailItem(Icons.aspect_ratio_rounded, "Superficie", "${_restaurant.superficie ?? 0} m²"),
               const SizedBox(height: 10),
-              _buildDetailItem(Icons.location_on_outlined, "Adresse", "${_restaurant.adresse} (${_restaurant.quartier})"),
+              _buildDetailItem(Icons.location_on_outlined, "Itinéraire", "${_restaurant.adresse} (${_restaurant.quartier})"),
+              const SizedBox(height: 10),
+              _buildDetailItem(Icons.phone_outlined, "Téléphone", _restaurant.telephone ?? 'Non renseigné'),
+              const SizedBox(height: 10),
+              _buildDetailItem(Icons.access_time_rounded, "Horaires d'ouverture", _restaurant.horaires ?? 'Non renseigné'),
               const SizedBox(height: 10),
               _buildDetailItem(Icons.gps_fixed_outlined, "GPS Coordonnées", "${_restaurant.latitude.toStringAsFixed(6)}, ${_restaurant.longitude.toStringAsFixed(6)}"),
               
@@ -931,111 +989,134 @@ class _RestaurantManagementScreenState
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           IconButton(
                             icon: const Icon(Icons.arrow_back, color: AppColors.marronFonce),
                             onPressed: () => Navigator.of(context).pop(),
                           ),
-                          const SizedBox(width: 8),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.visibility_outlined, color: AppColors.marronFonce, size: 28),
+                                tooltip: "Aperçu client",
+                                onPressed: () {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (_) => RestaurantDetailsScreen(restaurant: _restaurant),
+                                    ),
+                                  );
+                                },
+                              ),
+                              if (!_restaurant.estValide) ...[
+                                const SizedBox(width: 8),
+                                IconButton(
+                                  icon: const Icon(Icons.delete_outline_rounded, size: 28, color: AppColors.rougeSignalement),
+                                  onPressed: () async {
+                                    final confirmed = await showAppConfirmDialog(
+                                      context,
+                                      title: "Supprimer cette soumission ?",
+                                      message: "Cette action est irréversible. La demande d'inscription sera définitivement annulée.",
+                                      confirmLabel: "Supprimer",
+                                      icon: Icons.delete_forever_outlined,
+                                      type: AppFeedbackType.error,
+                                    );
+                                    if (!confirmed) return;
+
+                                    setState(() {
+                                      _isLoading = true;
+                                    });
+
+                                    try {
+                                      await ServiceLocator.restaurantService.deleteRestaurant(_restaurant.id);
+                                      if (!mounted) return;
+                                      Navigator.of(context).pop();
+                                      showAppNotification(
+                                        context,
+                                        title: "Demande supprimée",
+                                        message: "La demande d'inscription a été supprimée.",
+                                        type: AppFeedbackType.success,
+                                      );
+                                    } catch (e) {
+                                      if (mounted) {
+                                        showAppNotification(
+                                          context,
+                                          title: "Erreur",
+                                          message: "Impossible de supprimer : $e",
+                                          type: AppFeedbackType.error,
+                                        );
+                                      }
+                                    } finally {
+                                      if (mounted) {
+                                        setState(() {
+                                          _isLoading = false;
+                                        });
+                                      }
+                                    }
+                                  },
+                                  tooltip: "Supprimer la soumission",
+                                ),
+                              ],
+                            ],
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Container(
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: AppColors.terracotta.withValues(alpha: 0.15),
+                                width: 2.5,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: AppColors.marronFonce.withValues(alpha: 0.06),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: RestaurantLogo(
+                              logoUrl: _restaurant.logoUrl,
+                              restaurantName: _restaurant.nom,
+                              size: 80,
+                              isCircular: true,
+                            ),
+                          ),
+                          const SizedBox(width: 18),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'ESPACE GERANT',
-                                  style: textTheme.labelLarge?.copyWith(
-                                    color: AppColors.grisTexte,
-                                    fontSize: 11,
-                                    letterSpacing: 2,
+                                  _restaurant.nom,
+                                  style: textTheme.displayLarge?.copyWith(
+                                    fontSize: 26,
                                     fontWeight: FontWeight.bold,
+                                    height: 1.2,
                                   ),
                                 ),
-                                const SizedBox(height: 4),
+                                const SizedBox(height: 6),
                                 Text(
-                                  _restaurant.nom,
-                                  style: textTheme.displayLarge?.copyWith(fontSize: 28),
+                                  _restaurant.adresse,
+                                  style: textTheme.bodyMedium?.copyWith(
+                                    color: AppColors.grisTexte,
+                                    fontSize: 13.5,
+                                    height: 1.3,
+                                  ),
                                 ),
                               ],
                             ),
                           ),
-                          // Note de soutenance : Pour des raisons de securite et de coherence des donnees, les soumissions
-                          // ne sont pas modifiables pendant l'examen par l'administrateur afin d'eviter des modifications
-                          // concurrentes pendant la validation des documents legaux.
-                          if (_restaurant.estValide)
-                            IconButton(
-                              icon: const Icon(Icons.edit_note_rounded, size: 28, color: AppColors.terracotta),
-                              onPressed: () => _showRestaurantEditSheet(_restaurant),
-                              tooltip: "Modifier le restaurant",
-                            )
-                          else ...[
-                            if (_restaurant.motifRejet != null)
-                              IconButton(
-                                icon: const Icon(Icons.edit_note_rounded, size: 28, color: AppColors.terracotta),
-                                onPressed: () async {
-                                  final result = await Navigator.of(context).push<bool>(
-                                    MaterialPageRoute(
-                                      builder: (_) => RegisterRestaurantScreen(
-                                        restaurantToEdit: _restaurant,
-                                      ),
-                                    ),
-                                  );
-                                  if (result == true) {
-                                    _loadData();
-                                  }
-                                },
-                                tooltip: "Corriger et resoumettre",
-                              ),
-                            IconButton(
-                              icon: const Icon(Icons.delete_outline_rounded, size: 28, color: AppColors.rougeSignalement),
-                              onPressed: () async {
-                                final confirmed = await showAppConfirmDialog(
-                                  context,
-                                  title: "Supprimer cette soumission ?",
-                                  message: "Cette action est irréversible. La demande d'inscription sera définitivement annulée.",
-                                  confirmLabel: "Supprimer",
-                                  icon: Icons.delete_forever_outlined,
-                                  type: AppFeedbackType.error,
-                                );
-                                if (!confirmed) return;
-
-                                setState(() {
-                                  _isLoading = true;
-                                });
-
-                                try {
-                                  await ServiceLocator.restaurantService.deleteRestaurant(_restaurant.id);
-                                  if (!mounted) return;
-                                  Navigator.of(context).pop();
-                                  showAppNotification(
-                                    context,
-                                    title: "Demande supprimée",
-                                    message: "La demande d'inscription a été supprimée.",
-                                    type: AppFeedbackType.success,
-                                  );
-                                } catch (e) {
-                                  if (mounted) {
-                                    showAppNotification(
-                                      context,
-                                      title: "Erreur",
-                                      message: "Impossible de supprimer : $e",
-                                      type: AppFeedbackType.error,
-                                    );
-                                  }
-                                } finally {
-                                  if (mounted) {
-                                    setState(() {
-                                      _isLoading = false;
-                                    });
-                                  }
-                                }
-                              },
-                              tooltip: "Supprimer la soumission",
-                            ),
-                          ],
                         ],
                       ),
                       if (_restaurant.estArchive) ...[
-                        const SizedBox(height: 10),
+                        const SizedBox(height: 16),
                         Container(
                           width: double.infinity,
                           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -1064,14 +1145,75 @@ class _RestaurantManagementScreenState
                           ),
                         ),
                       ],
-                      const SizedBox(height: 10),
-                      Text(
-                        _restaurant.adresse,
-                        style: textTheme.bodyMedium?.copyWith(
-                          color: AppColors.grisTexte,
-                          fontSize: 14,
-                        ),
-                      ),
+                      const SizedBox(height: 16),
+                      // Note de soutenance : Le design de l'en-tête s'inspire des codes esthétiques des réseaux sociaux (TikTok/Instagram)
+                      // en plaçant un bouton d'action principal large sous le bloc profil. Cela offre une meilleure accessibilité tactile
+                      // et clarifie l'affordance de modification de l'établissement.
+                      //
+                      // Note de soutenance : Pour des raisons de securite et de coherence des donnees, les soumissions
+                      // ne sont pas modifiables pendant l'examen par l'administrateur afin d'eviter des modifications
+                      // concurrentes pendant la validation des documents legaux.
+                      if (_restaurant.estValide)
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton.icon(
+                            onPressed: () => _showRestaurantEditSheet(_restaurant),
+                            icon: const Icon(Icons.edit_rounded, size: 16, color: AppColors.terracotta),
+                            label: const Text(
+                              "Modifier les informations",
+                              style: TextStyle(
+                                color: AppColors.terracotta,
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            style: OutlinedButton.styleFrom(
+                              side: const BorderSide(color: AppColors.terracotta, width: 1.5),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              backgroundColor: AppColors.terracotta.withValues(alpha: 0.05),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                            ),
+                          ),
+                        )
+                      else ...[
+                        if (_restaurant.motifRejet != null)
+                          SizedBox(
+                            width: double.infinity,
+                            child: OutlinedButton.icon(
+                              onPressed: () async {
+                                final result = await Navigator.of(context).push<bool>(
+                                  MaterialPageRoute(
+                                    builder: (_) => RegisterRestaurantScreen(
+                                      restaurantToEdit: _restaurant,
+                                    ),
+                                  ),
+                                );
+                                if (result == true) {
+                                  _loadData();
+                                }
+                              },
+                              icon: const Icon(Icons.edit_note_rounded, size: 18, color: AppColors.terracotta),
+                              label: const Text(
+                                "Corriger et resoumettre",
+                                style: TextStyle(
+                                  color: AppColors.terracotta,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              style: OutlinedButton.styleFrom(
+                                side: const BorderSide(color: AppColors.terracotta, width: 1.5),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                backgroundColor: AppColors.terracotta.withValues(alpha: 0.05),
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                              ),
+                            ),
+                          ),
+                      ],
                       const SizedBox(height: 12),
                       Row(
                         children: [

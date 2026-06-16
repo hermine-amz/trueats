@@ -108,88 +108,35 @@ class _LoginScreenState extends State<LoginScreen> {
                       const SizedBox(height: 10),
 
                       // En-tête de marque : Logo T + TruEats
-                      Row(
-                        children: [
-                          if (Navigator.of(context).canPop()) ...[
-                            IconButton(
-                              icon: const Icon(Icons.arrow_back, color: AppColors.marronFonce),
-                              onPressed: () => Navigator.of(context).pop(),
-                            ),
-                            const SizedBox(width: 8),
-                          ],
-                          Container(
-                            width: 38,
-                            height: 38,
-                            decoration: const BoxDecoration(
-                              color: AppColors.terracotta,
-                              shape: BoxShape.circle,
-                            ),
-                            alignment: Alignment.center,
-                            child: Text(
-                              "T",
-                              style: Theme.of(context).textTheme.displaySmall
-                                  ?.copyWith(
-                                    color: Colors.white,
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w900,
-                                  ),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Text(
-                            "TruEats",
-                            style: textTheme.displaySmall?.copyWith(
-                              fontSize: 22,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
+                      Center(
+                        child: Image.asset(
+                          'assets/logo_transparent.png',
+                          height: 40,
+                          fit: BoxFit.contain,
+                        ),
                       ),
 
                       const SizedBox(height: 40),
 
-                      // Label BIENVENUE
                       Text(
-                        "CONNEXION",
-                        style: textTheme.labelLarge?.copyWith(
-                          color: AppColors.terracotta.withValues(alpha: 0.8),
-                          fontSize: 13,
-                          letterSpacing: 2.0,
-                          fontWeight: FontWeight.bold,
+                        "Connexion",
+                        style: textTheme.displayLarge?.copyWith(
+                          fontSize: 28,
+                          color: AppColors.marronFonce,
                         ),
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 8),
 
-                      // Slogan : L'avis qu'on peut croire. (RichText)
-                      RichText(
-                        text: TextSpan(
-                          style: textTheme.displayLarge?.copyWith(
-                            fontSize: 34,
-                            height: 1.25,
-                          ),
-                          children: const [
-                            TextSpan(text: "L'avis qu'on\n"),
-                            TextSpan(
-                              text: "peut croire.",
-                              style: TextStyle(color: AppColors.terracotta),
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      const SizedBox(height: 16),
-
-                      // Description
                       Text(
-                        "Connectez-vous pour publier des avis et rechercher des restaurants en fonction de vos budgets.",
+                        "Connectez-vous pour publier des avis et rechercher des restaurants selon votre budget.",
                         style: textTheme.bodyLarge?.copyWith(
                           color: AppColors.grisTexte,
-                          fontSize: 15,
-                          height: 1.5,
+                          fontSize: 14,
+                          height: 1.4,
                         ),
                       ),
 
-                      const SizedBox(height: 36),
+                      const SizedBox(height: 24),
 
                       // Champ Email
                       TextFormField(

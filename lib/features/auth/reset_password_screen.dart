@@ -69,79 +69,31 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        children: [
-                          if (Navigator.of(context).canPop()) ...[
-                            IconButton(
-                              icon: const Icon(Icons.arrow_back, color: AppColors.marronFonce),
-                              onPressed: () => Navigator.of(context).pop(),
-                            ),
-                            const SizedBox(width: 8),
-                          ],
-                          Container(
-                            width: 38,
-                            height: 38,
-                            decoration: const BoxDecoration(
-                              color: AppColors.terracotta,
-                              shape: BoxShape.circle,
-                            ),
-                            alignment: Alignment.center,
-                            child: Text(
-                              'T',
-                              style: Theme.of(context).textTheme.displaySmall
-                                  ?.copyWith(
-                                    color: Colors.white,
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w900,
-                                  ),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Text(
-                            'TruEats',
-                            style: textTheme.displaySmall?.copyWith(
-                              fontSize: 22,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 36),
-                      Text(
-                        'RÉINITIALISATION',
-                        style: textTheme.labelLarge?.copyWith(
-                          color: AppColors.terracotta.withValues(alpha: 0.8),
-                          fontSize: 13,
-                          letterSpacing: 2.0,
-                          fontWeight: FontWeight.bold,
+                      Center(
+                        child: Image.asset(
+                          'assets/logo_transparent.png',
+                          height: 40,
+                          fit: BoxFit.contain,
                         ),
                       ),
-                      const SizedBox(height: 12),
-                      RichText(
-                        text: TextSpan(
-                          style: textTheme.displayLarge?.copyWith(
-                            fontSize: 32,
-                            height: 1.25,
-                          ),
-                          children: const [
-                            TextSpan(text: 'Mot de passe\n'),
-                            TextSpan(
-                              text: 'oublié ?',
-                              style: TextStyle(color: AppColors.terracotta),
-                            ),
-                          ],
+                      const SizedBox(height: 40),
+                      Text(
+                        "Mot de passe oublié ?",
+                        style: textTheme.displayLarge?.copyWith(
+                          fontSize: 28,
+                          color: AppColors.marronFonce,
                         ),
                       ),
-                      const SizedBox(height: 14),
+                      const SizedBox(height: 8),
                       Text(
-                        'Saisissez l’adresse e-mail associée à votre compte pour recevoir un lien de réinitialisation.',
+                        "Saisissez l’adresse e-mail de votre compte pour recevoir un lien de réinitialisation.",
                         style: textTheme.bodyLarge?.copyWith(
                           color: AppColors.grisTexte,
-                          fontSize: 15,
-                          height: 1.5,
+                          fontSize: 14,
+                          height: 1.4,
                         ),
                       ),
-                      const SizedBox(height: 28),
+                      const SizedBox(height: 20),
                       TextFormField(
                         controller: _emailController,
                         keyboardType: TextInputType.emailAddress,

@@ -635,17 +635,17 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
       children: [
         _buildInfoRow(
           Icons.location_on_outlined,
-          'Adresse',
+          "Itinéraire",
           _restaurant.adresse,
         ),
         const SizedBox(height: 16),
         _buildInfoRow(
           Icons.access_time,
           'Horaires d\'ouverture',
-          'Lundi - Dimanche : 11h00 - 23h00',
+          _restaurant.horaires ?? 'Non renseigné',
         ),
         const SizedBox(height: 16),
-        _buildInfoRow(Icons.phone_outlined, 'Téléphone', '+229 21 30 40 50'),
+        _buildInfoRow(Icons.phone_outlined, 'Téléphone', _restaurant.telephone ?? 'Non renseigné'),
       ],
     );
   }

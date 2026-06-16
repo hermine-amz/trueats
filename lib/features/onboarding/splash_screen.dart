@@ -48,11 +48,14 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
       if (mounted) {
         Navigator.of(context).pushReplacement(
           PageRouteBuilder(
-            transitionDuration: const Duration(milliseconds: 800),
+            transitionDuration: const Duration(milliseconds: 650),
             pageBuilder: (context, animation, secondaryAnimation) => const LoginScreen(),
             transitionsBuilder: (context, animation, secondaryAnimation, child) {
               return FadeTransition(
-                opacity: animation,
+                opacity: CurvedAnimation(
+                  parent: animation,
+                  curve: Curves.easeOut,
+                ),
                 child: child,
               );
             },
@@ -82,7 +85,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
               width: 250,
               height: 250,
               decoration: BoxDecoration(
-                color: const Color(0xFF8D3C1F).withValues(alpha: 0.58),
+                color: Colors.white.withValues(alpha: 0.05),
                 shape: BoxShape.circle,
               ),
             ),
@@ -94,7 +97,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
               width: 300,
               height: 300,
               decoration: BoxDecoration(
-                color: const Color(0xFFD47C5A).withValues(alpha: 0.39),
+                color: Colors.white.withValues(alpha: 0.035),
                 shape: BoxShape.circle,
               ),
             ),
@@ -115,24 +118,15 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
               },
               child: Hero(
                 tag: 'app_logo',
-                child: Container(
-                  width: 220,
-                  height: 220,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.15),
-                        blurRadius: 25,
-                        offset: const Offset(0, 8),
-                      ),
-                    ],
+                child: ColorFiltered(
+                  colorFilter: const ColorFilter.mode(
+                    AppColors.creme,
+                    BlendMode.srcIn,
                   ),
-                  clipBehavior: Clip.antiAlias,
                   child: Image.asset(
-                    'assets/logo.jpg',
-                    fit: BoxFit.cover,
+                    'assets/logo_transparent.png',
+                    width: 240,
+                    fit: BoxFit.contain,
                   ),
                 ),
               ),

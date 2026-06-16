@@ -162,6 +162,8 @@ abstract class RestaurantService {
     required int id,
     required String name,
     required String address,
+    String? telephone,
+    String? horaires,
     String? quartier,
     String? category,
     String? typeCuisine,

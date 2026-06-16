@@ -22,6 +22,8 @@ class _RegisterRestaurantScreenState extends State<RegisterRestaurantScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _addressController = TextEditingController();
+  final _telephoneController = TextEditingController();
+  final _horairesController = TextEditingController();
   final _quartierController = TextEditingController();
   final _categoryController = TextEditingController();
   final _typeCuisineController = TextEditingController();
@@ -47,6 +49,8 @@ class _RegisterRestaurantScreenState extends State<RegisterRestaurantScreen> {
       final r = widget.restaurantToEdit!;
       _nameController.text = r.nom;
       _addressController.text = r.adresse;
+      _telephoneController.text = r.telephone ?? '';
+      _horairesController.text = r.horaires ?? '';
       _quartierController.text = r.quartier;
       _categoryController.text = r.categorie;
       _typeCuisineController.text = r.typeCuisine;
@@ -245,6 +249,8 @@ class _RegisterRestaurantScreenState extends State<RegisterRestaurantScreen> {
   void dispose() {
     _nameController.dispose();
     _addressController.dispose();
+    _telephoneController.dispose();
+    _horairesController.dispose();
     _quartierController.dispose();
     _categoryController.dispose();
     _typeCuisineController.dispose();
@@ -435,6 +441,8 @@ class _RegisterRestaurantScreenState extends State<RegisterRestaurantScreen> {
           id: widget.restaurantToEdit!.id,
           name: _nameController.text.trim(),
           address: _addressController.text.trim(),
+          telephone: _telephoneController.text.trim().isEmpty ? null : _telephoneController.text.trim(),
+          horaires: _horairesController.text.trim().isEmpty ? null : _horairesController.text.trim(),
           quartier: _quartierController.text.trim(),
           category: _categoryController.text.trim().isEmpty
               ? 'Restaurant'
@@ -480,6 +488,8 @@ class _RegisterRestaurantScreenState extends State<RegisterRestaurantScreen> {
       id: 0,
       nom: _nameController.text.trim(),
       adresse: _addressController.text.trim(),
+      telephone: _telephoneController.text.trim().isEmpty ? null : _telephoneController.text.trim(),
+      horaires: _horairesController.text.trim().isEmpty ? null : _horairesController.text.trim(),
       quartier: _quartierController.text.trim(),
       categorie: _categoryController.text.trim().isEmpty
           ? 'Restaurant'
@@ -574,15 +584,43 @@ class _RegisterRestaurantScreenState extends State<RegisterRestaurantScreen> {
                   },
                 ),
                 const SizedBox(height: 16),
-                _buildTextField(
+                TextFormField(
                   controller: _addressController,
-                  label: 'Adresse',
+                  maxLines: 4,
+                  minLines: 2,
+                  decoration: InputDecoration(
+                    labelText: "Itinéraire",
+                    hintText: "Décrivez le chemin pour aller...",
+                    filled: true,
+                    fillColor: Colors.white,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: const BorderSide(color: AppColors.grisBordure),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: const BorderSide(color: AppColors.grisBordure),
+                    ),
+                  ),
                   validator: (value) {
                     if (value == null || value.trim().isEmpty) {
-                      return 'Veuillez saisir l adresse.';
+                      return "Veuillez décrire l'itinéraire pour aller au restaurant.";
                     }
                     return null;
                   },
+                ),
+                const SizedBox(height: 16),
+                _buildTextField(
+                  controller: _telephoneController,
+                  label: "Téléphone",
+                  hintText: "Ex: +229 21 30 40 50",
+                  keyboardType: TextInputType.phone,
+                ),
+                const SizedBox(height: 16),
+                _buildTextField(
+                  controller: _horairesController,
+                  label: "Horaires d'ouverture",
+                  hintText: "Ex: Lundi - Dimanche : 11h00 - 23h00",
                 ),
                 const SizedBox(height: 16),
                 _buildTextField(

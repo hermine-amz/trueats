@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'dart:ui' as ui;
 
@@ -11,6 +12,7 @@ import '../../core/utils/image_url_helper.dart';
 import '../../core/utils/qr_download_helper.dart';
 import '../../core/widgets/app_feedback.dart';
 import '../../core/widgets/restaurant_logo.dart';
+import '../../core/services/http_services.dart';
 import 'register_restaurant_screen.dart';
 import 'restaurant_management_screen.dart';
 
@@ -76,6 +78,20 @@ class _GerantDashboardState extends State<GerantDashboard> {
         .then((_) => _loadRestaurants());
   }
 
+  String _getAvatarAsset(String? role, String? sexe) {
+    final isMale = sexe?.toLowerCase().trim() == 'masculin' || sexe?.toLowerCase().trim() == 'homme';
+    switch (role) {
+      case 'admin':
+        return isMale ? 'assets/avatar_admin_homme.png' : 'assets/avatar_admin_femme.png';
+      case 'gerant':
+        return isMale ? 'assets/avatar_gerant_homme.png' : 'assets/avatar_gerant_femme.png';
+      case 'client':
+      case 'utilisateur':
+      default:
+        return isMale ? 'assets/avatar_client_homme.png' : 'assets/avatar_client_femme.png';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
@@ -127,6 +143,24 @@ class _GerantDashboardState extends State<GerantDashboard> {
                               ],
                             ),
                           ),
+                          const SizedBox(width: 12),
+                          if (currentUser != null)
+                            Container(
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: AppColors.terracotta.withValues(alpha: 0.15),
+                                  width: 1.5,
+                                ),
+                              ),
+                              child: CircleAvatar(
+                                radius: 24,
+                                backgroundColor: AppColors.cremeFonce,
+                                backgroundImage: AssetImage(
+                                  _getAvatarAsset(currentUser.role, currentUser.sexe),
+                                ),
+                              ),
+                            ),
                         ],
                       ),
                       const SizedBox(height: 12),
@@ -605,11 +639,38 @@ class QrDialog extends StatefulWidget {
 class QrDialogState extends State<QrDialog> {
   final GlobalKey _repaintKey = GlobalKey();
   bool _isDownloading = false;
+  bool _logoPreloaded = false;
+  ImageProvider? _logoProvider;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_logoPreloaded &&
+        widget.restaurant.logoUrl != null &&
+        widget.restaurant.logoUrl!.trim().isNotEmpty) {
+      final logoUrl = ImageUrlHelper.resolve(widget.restaurant.logoUrl);
+      _logoProvider = NetworkImage(logoUrl);
+      precacheImage(_logoProvider!, context).then((_) {
+        if (mounted) {
+          setState(() {
+            _logoPreloaded = true;
+          });
+        }
+      }).catchError((e) {
+        debugPrint('Erreur precache logo: $e');
+        if (mounted) {
+          setState(() {
+            _logoPreloaded = false;
+          });
+        }
+      });
+    }
+  }
 
   Future<void> _captureAndDownload() async {
     setState(() => _isDownloading = true);
     try {
-      await Future.delayed(const Duration(milliseconds: 100)); // laisser le widget se rendre
+      await Future.delayed(const Duration(milliseconds: 200)); // laisser le widget se rendre complètement
 
       final boundary = _repaintKey.currentContext?.findRenderObject()
           as RenderRepaintBoundary?;
@@ -629,7 +690,6 @@ class QrDialogState extends State<QrDialog> {
       if (kIsWeb) {
         await saveFile(bytes, fileName);
       } else {
-        // Mobile / Desktop — fallback non-web (non utilisé sur Chrome)
         await saveFile(bytes, fileName);
       }
 
@@ -658,76 +718,113 @@ class QrDialogState extends State<QrDialog> {
 
   @override
   Widget build(BuildContext context) {
-    // Import conditionnel de qr_flutter
+    final hasLogo = widget.restaurant.logoUrl != null &&
+        widget.restaurant.logoUrl!.trim().isNotEmpty;
+    final isLogoLoading = hasLogo && !_logoPreloaded;
+
     return Dialog(
       backgroundColor: AppColors.creme,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'QR Code',
-              style: Theme.of(context)
-                  .textTheme
-                  .displaySmall
-                  ?.copyWith(fontSize: 20),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              widget.restaurant.nom,
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                color: AppColors.terracotta,
+      child: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Télécharger le QR Code',
+                style: Theme.of(context)
+                    .textTheme
+                    .displaySmall
+                    ?.copyWith(fontSize: 20),
               ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 20),
-            // RepaintBoundary — capture le QR pour export PNG
-            RepaintBoundary(
-              key: _repaintKey,
-              child: Container(
-                padding: const EdgeInsets.all(16),
-                color: Colors.white,
-                child: QrImageWidget(data: widget.restaurant.qrCode),
+              const SizedBox(height: 16),
+              
+              // RepaintBoundary — capture le QR pour export PNG (uniquement QR + nom)
+              RepaintBoundary(
+                key: _repaintKey,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(color: Colors.black, width: 2.0),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Nom du restaurant en Lora bold et noir pur (en haut)
+                      Text(
+                        widget.restaurant.nom,
+                        style: GoogleFonts.lora(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black,
+                          fontSize: 18,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 16),
+                      
+                      // QR Code avec logo du restaurant au milieu
+                      QrImageWidget(
+                        data: (() {
+                          final apiBase = ApiClient.baseUrl;
+                          final origin = apiBase.endsWith('/api')
+                              ? apiBase.substring(0, apiBase.length - 4)
+                              : apiBase;
+                          return '$origin/scan/${widget.restaurant.qrCode}';
+                        })(),
+                        logoProvider: _logoPreloaded ? _logoProvider : null,
+                      ),
+                      const SizedBox(height: 16),
+                      
+                      // Texte descriptif de scan en noir pur (en bas)
+                      Text(
+                        'Scanner le code QR pour donner son avis et voir le menu',
+                        style: GoogleFonts.outfit(
+                          color: Colors.black,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
               ),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              widget.restaurant.qrCode,
-              style: const TextStyle(fontSize: 10, color: AppColors.grisTexte),
-              textAlign: TextAlign.center,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 20),
-            ElevatedButton.icon(
-              onPressed: _isDownloading ? null : _captureAndDownload,
-              icon: _isDownloading
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(
-                          strokeWidth: 2, color: Colors.white),
-                    )
-                  : const Icon(Icons.download_rounded),
-              label: Text(_isDownloading ? 'Téléchargement...' : 'Télécharger'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.terracotta,
-                foregroundColor: Colors.white,
-                minimumSize: const Size(double.infinity, 44),
+              const SizedBox(height: 20),
+              
+              ElevatedButton.icon(
+                onPressed: (_isDownloading || isLogoLoading)
+                    ? null
+                    : _captureAndDownload,
+                icon: (_isDownloading || isLogoLoading)
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.white),
+                      )
+                    : const Icon(Icons.download_rounded),
+                label: Text(_isDownloading
+                    ? 'Téléchargement...'
+                    : (isLogoLoading ? 'Chargement du logo...' : 'Télécharger')),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.terracotta,
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size(double.infinity, 44),
+                ),
               ),
-            ),
-            const SizedBox(height: 8),
-            OutlinedButton(
-              onPressed: () => Navigator.of(context).pop(),
-              style: OutlinedButton.styleFrom(
-                minimumSize: const Size(double.infinity, 44),
+              const SizedBox(height: 8),
+              OutlinedButton(
+                onPressed: () => Navigator.of(context).pop(),
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size(double.infinity, 44),
+                ),
+                child: const Text('Fermer'),
               ),
-              child: const Text('Fermer'),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -737,7 +834,9 @@ class QrDialogState extends State<QrDialog> {
 // Widget QR réel via qr_flutter — fonctionne sur web et mobile
 class QrImageWidget extends StatelessWidget {
   final String data;
-  const QrImageWidget({required this.data, super.key});
+  final ImageProvider? logoProvider;
+  
+  const QrImageWidget({required this.data, this.logoProvider, super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -746,6 +845,20 @@ class QrImageWidget extends StatelessWidget {
       version: QrVersions.auto,
       size: 200.0,
       backgroundColor: Colors.white,
+      eyeStyle: const QrEyeStyle(
+        eyeShape: QrEyeShape.square,
+        color: Colors.black,
+      ),
+      dataModuleStyle: const QrDataModuleStyle(
+        dataModuleShape: QrDataModuleShape.square,
+        color: Colors.black,
+      ),
+      embeddedImage: logoProvider,
+      embeddedImageStyle: logoProvider != null
+          ? const QrEmbeddedImageStyle(
+              size: Size(45, 45),
+            )
+          : null,
       errorStateBuilder: (ctx, err) => const Center(
         child: Text('Erreur QR', style: TextStyle(color: Colors.red)),
       ),

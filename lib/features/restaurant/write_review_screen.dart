@@ -187,7 +187,7 @@ class _WriteReviewScreenState extends State<WriteReviewScreen> {
                         CircularProgressIndicator(),
                         SizedBox(height: 16),
                         Text(
-                          'Vérification silencieuse de votre présence par GPS...',
+                          'Vérification de votre présence par GPS...',
                         ),
                       ],
                     ),
@@ -296,8 +296,7 @@ class _WriteReviewScreenState extends State<WriteReviewScreen> {
                                   const SizedBox(width: 12),
                                   Expanded(
                                     child: Text(
-                                      'Vous devez vous trouver physiquement dans le restaurant pour publier votre évaluation.\n'
-                                      '(Distance mesurée : ${(_calculatedDistance / 1000).toStringAsFixed(2)} km, autorisée : ${widget.restaurant.rayonMetres.toInt()}m)',
+                                      'Vous devez vous trouver physiquement dans le restaurant pour publier votre avis.',
                                       style: textTheme.bodyMedium?.copyWith(
                                         color: AppColors.rougeSignalement,
                                         height: 1.4,

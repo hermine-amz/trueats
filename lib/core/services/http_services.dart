@@ -650,6 +650,8 @@ class HttpRestaurantService implements RestaurantService {
       final response = await ApiClient.post('/restaurants', {
         'nom': restaurant.nom,
         'adresse': restaurant.adresse,
+        'telephone': restaurant.telephone,
+        'horaires': restaurant.horaires,
         'quartier': restaurant.quartier,
         'categorie': restaurant.categorie,
         'type_cuisine': restaurant.typeCuisine,
@@ -678,6 +680,8 @@ class HttpRestaurantService implements RestaurantService {
     required int id,
     required String name,
     required String address,
+    String? telephone,
+    String? horaires,
     String? quartier,
     String? category,
     String? typeCuisine,
@@ -696,6 +700,8 @@ class HttpRestaurantService implements RestaurantService {
         'nom': name,
         'adresse': address,
       };
+      if (telephone != null) payload['telephone'] = telephone;
+      if (horaires != null) payload['horaires'] = horaires;
       if (quartier != null) payload['quartier'] = quartier;
       if (category != null) payload['categorie'] = category;
       if (typeCuisine != null) payload['type_cuisine'] = typeCuisine;

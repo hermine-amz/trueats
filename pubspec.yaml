@@ -28,3 +28,12 @@ flutter:
   uses-material-design: true
   assets:
     - assets/logo.jpg
+    - assets/logo_transparent.png
+    - assets/avatar_client_homme.png
+    - assets/avatar_client_femme.png
+    - assets/avatar_gerant_homme.png
+    - assets/avatar_gerant_femme.png
+    - assets/avatar_admin_homme.png
+    - assets/avatar_admin_femme.png
+
+

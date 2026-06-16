@@ -390,6 +390,8 @@ class MockRestaurantService implements RestaurantService {
     required int id,
     required String name,
     required String address,
+    String? telephone,
+    String? horaires,
     String? quartier,
     String? category,
     String? typeCuisine,
@@ -412,6 +414,8 @@ class MockRestaurantService implements RestaurantService {
       _restaurants[index] = currentRes.copyWith(
         nom: name,
         adresse: address,
+        telephone: telephone,
+        horaires: horaires,
         quartier: quartier,
         categorie: category,
         typeCuisine: typeCuisine,

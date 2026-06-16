@@ -753,7 +753,7 @@ class _AdminConsoleState extends State<AdminConsole> {
           const Divider(color: AppColors.grisBordure, height: 1),
           const SizedBox(height: 12),
           
-          _buildInfoRow(Icons.location_on_outlined, "Adresse", "${demande.adresse} (${demande.quartier ?? ''})"),
+          _buildInfoRow(Icons.location_on_outlined, "Itinéraire", "${demande.adresse} (${demande.quartier ?? ''})"),
           const SizedBox(height: 6),
           _buildInfoRow(Icons.gps_fixed_outlined, "Coordonnees GPS", "${demande.latitude.toStringAsFixed(5)}, ${demande.longitude.toStringAsFixed(5)}"),
           const SizedBox(height: 6),

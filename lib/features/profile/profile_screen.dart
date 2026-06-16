@@ -208,6 +208,34 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  String _getAvatarAsset(String? role, String? sexe) {
+    final isMale = sexe?.toLowerCase().trim() == 'masculin' || sexe?.toLowerCase().trim() == 'homme';
+    switch (role) {
+      case 'admin':
+        return isMale ? 'assets/avatar_admin_homme.png' : 'assets/avatar_admin_femme.png';
+      case 'gerant':
+        return isMale ? 'assets/avatar_gerant_homme.png' : 'assets/avatar_gerant_femme.png';
+      case 'client':
+      case 'utilisateur':
+      default:
+        return isMale ? 'assets/avatar_client_homme.png' : 'assets/avatar_client_femme.png';
+    }
+  }
+
+  String _getRoleLabel(String? role) {
+    switch (role) {
+      case 'admin':
+        return 'PROFIL ADMINISTRATEUR';
+      case 'gerant':
+        return 'PROFIL GÉRANT';
+      case 'client':
+      case 'utilisateur':
+        return 'PROFIL CLIENT';
+      default:
+        return 'PROFIL';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
@@ -242,26 +270,59 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             onPressed: _showSettingsSheet,
                           ),
                         ),
-                        Text(
-                          "PROFIL",
-                          style: textTheme.labelLarge?.copyWith(
-                            color: AppColors.terracotta,
-                            fontSize: 12,
-                            letterSpacing: 2,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          user?.name ?? "Visiteur",
-                          style: textTheme.displayLarge?.copyWith(fontSize: 30),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          isVisitor ? "Session invitee" : user.email,
-                          style: textTheme.bodyMedium?.copyWith(
-                            color: AppColors.grisTexte,
-                          ),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Container(
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: AppColors.terracotta.withValues(alpha: 0.15),
+                                  width: 2.5,
+                                ),
+                              ),
+                              child: CircleAvatar(
+                                radius: 38,
+                                backgroundColor: AppColors.cremeFonce,
+                                backgroundImage: AssetImage(
+                                  _getAvatarAsset(user?.role, user?.sexe),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    _getRoleLabel(user?.role),
+                                    style: textTheme.labelLarge?.copyWith(
+                                      color: AppColors.terracotta,
+                                      fontSize: 11,
+                                      letterSpacing: 1.5,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    user?.name ?? "Visiteur",
+                                    style: textTheme.displayLarge?.copyWith(
+                                      fontSize: 26,
+                                      height: 1.15,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    isVisitor ? "Session invitee" : user.email,
+                                    style: textTheme.bodyMedium?.copyWith(
+                                      color: AppColors.grisTexte,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
                         const SizedBox(height: 24),
                         Row(
