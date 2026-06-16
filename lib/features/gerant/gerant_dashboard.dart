@@ -639,33 +639,6 @@ class QrDialog extends StatefulWidget {
 class QrDialogState extends State<QrDialog> {
   final GlobalKey _repaintKey = GlobalKey();
   bool _isDownloading = false;
-  bool _logoPreloaded = false;
-  ImageProvider? _logoProvider;
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (!_logoPreloaded &&
-        widget.restaurant.logoUrl != null &&
-        widget.restaurant.logoUrl!.trim().isNotEmpty) {
-      final logoUrl = ImageUrlHelper.resolve(widget.restaurant.logoUrl);
-      _logoProvider = NetworkImage(logoUrl);
-      precacheImage(_logoProvider!, context).then((_) {
-        if (mounted) {
-          setState(() {
-            _logoPreloaded = true;
-          });
-        }
-      }).catchError((e) {
-        debugPrint('Erreur precache logo: $e');
-        if (mounted) {
-          setState(() {
-            _logoPreloaded = false;
-          });
-        }
-      });
-    }
-  }
 
   Future<void> _captureAndDownload() async {
     setState(() => _isDownloading = true);
@@ -718,10 +691,6 @@ class QrDialogState extends State<QrDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final hasLogo = widget.restaurant.logoUrl != null &&
-        widget.restaurant.logoUrl!.trim().isNotEmpty;
-    final isLogoLoading = hasLogo && !_logoPreloaded;
-
     return Dialog(
       backgroundColor: AppColors.creme,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
@@ -765,7 +734,7 @@ class QrDialogState extends State<QrDialog> {
                       ),
                       const SizedBox(height: 16),
                       
-                      // QR Code avec logo du restaurant au milieu
+                      // QR Code sans logo
                       QrImageWidget(
                         data: (() {
                           final apiBase = ApiClient.baseUrl;
@@ -774,7 +743,6 @@ class QrDialogState extends State<QrDialog> {
                               : apiBase;
                           return '$origin/scan/${widget.restaurant.qrCode}';
                         })(),
-                        logoProvider: _logoPreloaded ? _logoProvider : null,
                       ),
                       const SizedBox(height: 16),
                       
@@ -795,10 +763,10 @@ class QrDialogState extends State<QrDialog> {
               const SizedBox(height: 20),
               
               ElevatedButton.icon(
-                onPressed: (_isDownloading || isLogoLoading)
+                onPressed: _isDownloading
                     ? null
                     : _captureAndDownload,
-                icon: (_isDownloading || isLogoLoading)
+                icon: _isDownloading
                     ? const SizedBox(
                         width: 16,
                         height: 16,
@@ -808,7 +776,7 @@ class QrDialogState extends State<QrDialog> {
                     : const Icon(Icons.download_rounded),
                 label: Text(_isDownloading
                     ? 'Téléchargement...'
-                    : (isLogoLoading ? 'Chargement du logo...' : 'Télécharger')),
+                    : 'Télécharger'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.terracotta,
                   foregroundColor: Colors.white,
@@ -834,16 +802,14 @@ class QrDialogState extends State<QrDialog> {
 // Widget QR réel via qr_flutter — fonctionne sur web et mobile
 class QrImageWidget extends StatelessWidget {
   final String data;
-  final ImageProvider? logoProvider;
   
-  const QrImageWidget({required this.data, this.logoProvider, super.key});
+  const QrImageWidget({required this.data, super.key});
 
   @override
   Widget build(BuildContext context) {
     return QrImageView(
       data: data.isEmpty ? 'trueats_placeholder' : data,
       version: QrVersions.auto,
-      errorCorrectionLevel: QrErrorCorrectLevel.H,
       size: 200.0,
       backgroundColor: Colors.white,
       eyeStyle: const QrEyeStyle(
@@ -854,12 +820,6 @@ class QrImageWidget extends StatelessWidget {
         dataModuleShape: QrDataModuleShape.square,
         color: Colors.black,
       ),
-      embeddedImage: logoProvider,
-      embeddedImageStyle: logoProvider != null
-          ? const QrEmbeddedImageStyle(
-              size: Size(45, 45),
-            )
-          : null,
       errorStateBuilder: (ctx, err) => const Center(
         child: Text('Erreur QR', style: TextStyle(color: Colors.red)),
       ),
