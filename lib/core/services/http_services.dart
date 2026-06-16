@@ -512,7 +512,8 @@ class HttpRestaurantService implements RestaurantService {
           iconTypes: ['⭐'],
         )
       ];
-    } catch (e) {
+    } catch (e, stack) {
+      debugPrint("Error in getExplorationLists HTTP call: $e\n$stack");
       return [
         const ExplorationList(
           id: 1,

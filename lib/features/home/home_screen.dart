@@ -341,6 +341,15 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildRestaurantListItem(BuildContext context, Restaurant restaurant) {
     final textTheme = Theme.of(context).textTheme;
 
+    final budgetText = _budgetController.text.trim();
+    final double? budget = budgetText.isNotEmpty
+        ? double.tryParse(budgetText.replaceAll(RegExp(r'[^0-9]'), ''))
+        : null;
+
+    final matchingDishes = budget != null
+        ? restaurant.menu.where((plat) => plat.disponible && plat.prix <= budget).toList()
+        : <Plat>[];
+
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
@@ -425,6 +434,63 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ],
                     ),
+                    if (matchingDishes.isNotEmpty) ...[
+                      const SizedBox(height: 10),
+                      const Divider(height: 1, color: AppColors.grisBordure),
+                      const SizedBox(height: 8),
+                      Text(
+                        "PLATS DANS LE BUDGET",
+                        style: textTheme.labelLarge?.copyWith(
+                          color: AppColors.terracotta,
+                          fontSize: 10,
+                          letterSpacing: 1.0,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        children: matchingDishes.map((plat) {
+                          return Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: AppColors.cremeFonce,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: AppColors.grisBordure),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(
+                                  Icons.restaurant_menu,
+                                  size: 12,
+                                  color: AppColors.terracotta,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  plat.nom,
+                                  style: textTheme.bodyMedium?.copyWith(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.marronFonce,
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  '· ${plat.prix.toInt()} FCFA',
+                                  style: textTheme.bodyMedium?.copyWith(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.terracotta,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ],
                   ],
                 ),
               ),

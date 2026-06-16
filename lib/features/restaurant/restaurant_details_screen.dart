@@ -28,6 +28,7 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
   List<Avis> _reviews = [];
   bool _isLoadingReviews = true;
   Restaurant? _freshRestaurant;
+  bool _isBookmarked = false;
 
   Restaurant get _restaurant => _freshRestaurant ?? widget.restaurant;
 
@@ -37,6 +38,22 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
     _activeTabIndex = widget.initialTabIndex;
     _loadReviews();
     _loadFreshRestaurant();
+    _checkIfBookmarked();
+  }
+
+  Future<void> _checkIfBookmarked() async {
+    try {
+      final lists = await ServiceLocator.restaurantService.getExplorationLists();
+      final isBookmarked = lists.any((list) => list.adresses.any((r) => r.id == widget.restaurant.id));
+      debugPrint("Check bookmark for res ${widget.restaurant.id}: isBookmarked=$isBookmarked");
+      if (mounted) {
+        setState(() {
+          _isBookmarked = isBookmarked;
+        });
+      }
+    } catch (e, stack) {
+      debugPrint("Error in _checkIfBookmarked: $e\n$stack");
+    }
   }
 
   Future<void> _loadFreshRestaurant() async {
@@ -64,9 +81,16 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
 
   Future<void> _addRestaurantToExploreList() async {
     final lists = await ServiceLocator.restaurantService.getExplorationLists();
-    var exploreList = lists
-        .where((list) => list.nom.toLowerCase() == 'à explorer')
-        .toList();
+    
+    // Note: On recherche en priorité la liste 'À explorer', sinon on prend la première disponible
+    var exploreList = lists.where((list) => 
+      list.nom.toLowerCase().trim() == 'à explorer' || 
+      list.nom.toLowerCase().trim() == 'a explorer'
+    ).toList();
+
+    if (exploreList.isEmpty && lists.isNotEmpty) {
+      exploreList = [lists.first];
+    }
 
     if (exploreList.isEmpty) {
       await ServiceLocator.restaurantService.createExplorationList(
@@ -74,11 +98,14 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
         false,
         ['⭐'],
       );
-      final refreshedLists = await ServiceLocator.restaurantService
-          .getExplorationLists();
-      exploreList = refreshedLists
-          .where((list) => list.nom.toLowerCase() == 'à explorer')
-          .toList();
+      final refreshedLists = await ServiceLocator.restaurantService.getExplorationLists();
+      exploreList = refreshedLists.where((list) => 
+        list.nom.toLowerCase().trim() == 'à explorer' || 
+        list.nom.toLowerCase().trim() == 'a explorer'
+      ).toList();
+      if (exploreList.isEmpty && refreshedLists.isNotEmpty) {
+        exploreList = [refreshedLists.first];
+      }
     }
 
     if (exploreList.isEmpty) {
@@ -89,6 +116,65 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
       exploreList.first.id,
       _restaurant.id,
     );
+  }
+
+  Future<void> _toggleBookmark() async {
+    try {
+      final confirmed = await showAppConfirmDialog(
+        context,
+        title: 'Retirer de la liste ?',
+        message: 'Voulez-vous retirer ${_restaurant.nom} de votre liste ?',
+        confirmLabel: 'Retirer',
+        icon: Icons.bookmark_remove_outlined,
+        type: AppFeedbackType.warning,
+      );
+      if (!confirmed) return;
+
+      final lists = await ServiceLocator.restaurantService.getExplorationLists();
+      // On cherche toutes les listes contenant ce restaurant pour l'en retirer
+      final containingLists = lists.where((list) => list.adresses.any((r) => r.id == _restaurant.id)).toList();
+
+      if (containingLists.isNotEmpty) {
+        for (final list in containingLists) {
+          await ServiceLocator.restaurantService.addRestaurantToExploration(
+            list.id,
+            _restaurant.id,
+          );
+        }
+      } else {
+        // Fallback : au cas où, on essaie de basculer la liste par défaut
+        final exploreList = lists.where((list) => 
+          list.nom.toLowerCase().trim() == 'à explorer' || 
+          list.nom.toLowerCase().trim() == 'a explorer'
+        ).toList();
+        if (exploreList.isNotEmpty) {
+          await ServiceLocator.restaurantService.addRestaurantToExploration(
+            exploreList.first.id,
+            _restaurant.id,
+          );
+        }
+      }
+
+      setState(() {
+        _isBookmarked = false;
+      });
+      if (!mounted) return;
+      showAppNotification(
+        context,
+        title: 'Retiré de la liste',
+        message: '${_restaurant.nom} a été retiré de votre liste.',
+        type: AppFeedbackType.success,
+      );
+    } catch (e) {
+      if (mounted) {
+        showAppNotification(
+          context,
+          title: 'Erreur',
+          message: 'Impossible de modifier la liste : $e',
+          type: AppFeedbackType.error,
+        );
+      }
+    }
   }
 
   Future<void> _showAddToExploreDialog() async {
@@ -163,6 +249,9 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
                       await _addRestaurantToExploreList();
                       if (!mounted) return;
                       navigator.pop();
+                      setState(() {
+                        _isBookmarked = true;
+                      });
                       showAppNotification(
                         context,
                         title: 'Ajouté à la liste',
@@ -243,8 +332,11 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
               CircleAvatar(
                 backgroundColor: Colors.black38,
                 child: IconButton(
-                  icon: const Icon(Icons.bookmark_add_outlined, color: Colors.white),
-                  onPressed: _showAddToExploreDialog,
+                  icon: Icon(
+                    _isBookmarked ? Icons.bookmark : Icons.bookmark_add_outlined,
+                    color: Colors.white,
+                  ),
+                  onPressed: _isBookmarked ? _toggleBookmark : _showAddToExploreDialog,
                 ),
               ),
             ],

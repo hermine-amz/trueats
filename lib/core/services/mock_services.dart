@@ -293,7 +293,16 @@ class MockRestaurantService implements RestaurantService {
 
     if (index != -1) {
       final list = _explorations[index];
-      if (!list.adresses.any((item) => item.id == restaurantId)) {
+      final exists = list.adresses.any((item) => item.id == restaurantId);
+      if (exists) {
+        _explorations[index] = ExplorationList(
+          id: list.id,
+          nom: list.nom,
+          adresses: list.adresses.where((item) => item.id != restaurantId).toList(),
+          isShared: list.isShared,
+          iconTypes: list.iconTypes,
+        );
+      } else {
         _explorations[index] = ExplorationList(
           id: list.id,
           nom: list.nom,
