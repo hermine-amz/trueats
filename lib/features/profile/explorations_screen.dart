@@ -67,10 +67,12 @@ class _ExplorationsScreenState extends State<ExplorationsScreen> {
       backgroundColor: AppColors.creme,
       appBar: AppBar(
         title: const Text("A explorer"),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
+        leading: Navigator.of(context).canPop()
+            ? IconButton(
+                icon: const Icon(Icons.arrow_back),
+                onPressed: () => Navigator.of(context).pop(),
+              )
+            : null,
       ),
       body: SafeArea(
         child: RefreshIndicator(

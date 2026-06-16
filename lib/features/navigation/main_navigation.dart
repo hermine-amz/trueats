@@ -4,7 +4,7 @@ import '../../core/services/interfaces.dart';
 import '../../core/services/service_locator.dart';
 import '../../core/theme.dart';
 import '../home/home_screen.dart';
-import '../discover/discover_screen.dart';
+import '../profile/explorations_screen.dart';
 import '../scan/scan_qr_screen.dart';
 import '../profile/profile_screen.dart';
 
@@ -56,7 +56,7 @@ class _MainNavigationState extends State<MainNavigation> {
   List<Widget> _getPages() {
     return [
       HomeScreen(onProfileTap: _goToProfileTab),
-      const DiscoverScreen(),
+      const ExplorationsScreen(),
       const ScanQrScreen(),
       const ProfileScreen(),
     ];
@@ -70,9 +70,9 @@ class _MainNavigationState extends State<MainNavigation> {
         label: "Accueil",
       ),
       NavigationDestination(
-        icon: Icon(Icons.explore_outlined),
-        selectedIcon: Icon(Icons.explore),
-        label: "Découvrir",
+        icon: Icon(Icons.bookmark_border_rounded),
+        selectedIcon: Icon(Icons.bookmark_rounded),
+        label: "A explorer",
       ),
       NavigationDestination(
         icon: Icon(Icons.qr_code_scanner_outlined),

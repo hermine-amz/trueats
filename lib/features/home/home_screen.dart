@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../core/services/interfaces.dart';
 import '../../core/services/service_locator.dart';
@@ -17,14 +18,27 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final TextEditingController _searchController = TextEditingController();
+  final TextEditingController _budgetController = TextEditingController();
   User? _currentUser;
   List<Restaurant> _restaurants = [];
   bool _isLoading = true;
   String _query = "";
 
+  final List<String> _categories = [
+    "Tous",
+    "Plats Principaux",
+    "Entrées",
+    "Desserts",
+    "Boissons",
+    "Pizzas",
+    "Burgers"
+  ];
+  String _selectedCategory = "Tous";
+
   @override
   void dispose() {
     _searchController.dispose();
+    _budgetController.dispose();
     super.dispose();
   }
 
@@ -36,9 +50,32 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _loadRestaurants() async {
-    final list = _query.trim().isEmpty
+    List<Restaurant> list = _query.trim().isEmpty
         ? await ServiceLocator.restaurantService.getRestaurants()
         : await ServiceLocator.restaurantService.searchRestaurants(_query);
+
+    // Filtrer par budget max
+    final budgetText = _budgetController.text.trim();
+    if (budgetText.isNotEmpty) {
+      final budget = double.tryParse(budgetText.replaceAll(RegExp(r'[^0-9]'), ''));
+      if (budget != null) {
+        list = list.where((restaurant) {
+          return restaurant.menu.any((plat) => plat.prix <= budget);
+        }).toList();
+      }
+    }
+
+    // Filtrer par catégorie
+    if (_selectedCategory != "Tous") {
+      list = list.where((restaurant) {
+        final matchResCategory = restaurant.categorie.toLowerCase() == _selectedCategory.toLowerCase();
+        final matchPlatCategory = restaurant.menu.any(
+          (plat) => plat.categorie.toLowerCase() == _selectedCategory.toLowerCase(),
+        );
+        return matchResCategory || matchPlatCategory;
+      }).toList();
+    }
+
     if (mounted) {
       setState(() {
         _restaurants = list;
@@ -131,35 +168,138 @@ class _HomeScreenState extends State<HomeScreen> {
                           ],
                         ),
                         const SizedBox(height: 24),
-                        TextField(
-                          controller: _searchController,
-                          onChanged: _onSearchChanged,
-                          decoration: InputDecoration(
-                            hintText: 'Rechercher un restaurant...',
-                            prefixIcon: const Icon(
-                              Icons.search,
-                              color: Colors.white70,
-                            ),
-                            fillColor: Colors.white.withValues(alpha: 0.12),
-                            filled: true,
-                            hintStyle: const TextStyle(color: Colors.white70),
-                            contentPadding: const EdgeInsets.symmetric(
-                              vertical: 14,
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(24),
-                              borderSide: BorderSide(
-                                color: Colors.white.withValues(alpha: 0.2),
+                        Row(
+                          children: [
+                            Expanded(
+                              flex: 3,
+                              child: TextField(
+                                controller: _searchController,
+                                onChanged: _onSearchChanged,
+                                decoration: InputDecoration(
+                                  hintText: 'Nom, quartier...',
+                                  prefixIcon: const Icon(
+                                    Icons.search,
+                                    color: Colors.white70,
+                                  ),
+                                  fillColor: Colors.white.withValues(alpha: 0.12),
+                                  filled: true,
+                                  hintStyle: const TextStyle(color: Colors.white70),
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    vertical: 14,
+                                  ),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(24),
+                                    borderSide: BorderSide(
+                                      color: Colors.white.withValues(alpha: 0.2),
+                                    ),
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(24),
+                                    borderSide: const BorderSide(color: Colors.white),
+                                  ),
+                                ),
+                                style: const TextStyle(color: Colors.white),
                               ),
                             ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(24),
-                              borderSide: const BorderSide(color: Colors.white),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              flex: 2,
+                              child: TextField(
+                                controller: _budgetController,
+                                keyboardType: TextInputType.number,
+                                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                                onChanged: (_) {
+                                  setState(() {
+                                    _isLoading = true;
+                                  });
+                                  _loadRestaurants();
+                                },
+                                decoration: InputDecoration(
+                                  hintText: 'Budget max',
+                                  prefixIcon: const Icon(
+                                    Icons.attach_money_rounded,
+                                    color: Colors.white70,
+                                  ),
+                                  suffixText: 'FCFA',
+                                  suffixStyle: const TextStyle(color: Colors.white70, fontSize: 10),
+                                  fillColor: Colors.white.withValues(alpha: 0.12),
+                                  filled: true,
+                                  hintStyle: const TextStyle(color: Colors.white70),
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    vertical: 14,
+                                  ),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(24),
+                                    borderSide: BorderSide(
+                                      color: Colors.white.withValues(alpha: 0.2),
+                                    ),
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(24),
+                                    borderSide: const BorderSide(color: Colors.white),
+                                  ),
+                                ),
+                                style: const TextStyle(color: Colors.white),
+                              ),
                             ),
-                          ),
-                          style: const TextStyle(color: Colors.white),
+                          ],
                         ),
                       ],
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                    child: Text(
+                      "FILTRER PAR CATÉGORIE",
+                      style: textTheme.labelLarge?.copyWith(
+                        color: AppColors.terracotta,
+                        fontSize: 11,
+                        letterSpacing: 1.5,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    height: 38,
+                    child: ListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      itemCount: _categories.length,
+                      itemBuilder: (context, index) {
+                        final cat = _categories[index];
+                        final isSelected = _selectedCategory == cat;
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 8.0),
+                          child: ChoiceChip(
+                            label: Text(cat),
+                            selected: isSelected,
+                            selectedColor: AppColors.terracotta,
+                            backgroundColor: const Color(0xFFFDFBF7),
+                            labelStyle: TextStyle(
+                              color: isSelected ? Colors.white : AppColors.marronFonce,
+                              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                              fontSize: 12,
+                            ),
+                            side: BorderSide(
+                              color: isSelected ? Colors.transparent : AppColors.grisBordure,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(18),
+                            ),
+                            onSelected: (selected) {
+                              if (selected) {
+                                setState(() {
+                                  _selectedCategory = cat;
+                                  _isLoading = true;
+                                });
+                                _loadRestaurants();
+                              }
+                            },
+                          ),
+                        );
+                      },
                     ),
                   ),
                   Padding(
@@ -244,6 +384,28 @@ class _HomeScreenState extends State<HomeScreen> {
                     const SizedBox(height: 6),
                     Row(
                       children: [
+                        const Icon(
+                          Icons.star_rounded,
+                          color: Colors.amber,
+                          size: 16,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          restaurant.id == 1
+                              ? '4.7'
+                              : (restaurant.id == 2 ? '4.6' : '4.8'),
+                          style: textTheme.labelLarge?.copyWith(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.marronFonce,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        const Text(
+                          '·',
+                          style: TextStyle(color: AppColors.grisTexte, fontSize: 14),
+                        ),
+                        const SizedBox(width: 8),
                         const Icon(
                           Icons.location_on_outlined,
                           color: AppColors.grisTexte,
