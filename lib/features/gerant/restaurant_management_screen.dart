@@ -71,19 +71,22 @@ class _RestaurantManagementScreenState
     );
     final categoryController = TextEditingController();
 
-    // 1. Extraire les categories existantes du menu du restaurant + standards
+    // 1. Extraire uniquement les categories existantes du menu du restaurant
     final existingCategories = _restaurant.menu.map((p) => p.categorie).toSet().toList();
-    final standardCategories = ["Plats Principaux", "Entrées", "Desserts", "Boissons", "Pizzas", "Burgers"];
-    final allCategories = {...standardCategories, ...existingCategories}.toList();
+    final allCategories = existingCategories;
 
-    String selectedCategory = allCategories.contains(plat?.categorie)
-        ? (plat?.categorie ?? "Plats Principaux")
-        : (allCategories.isNotEmpty ? allCategories.first : "Plats Principaux");
+    String selectedCategory = "";
+    if (plat != null && allCategories.contains(plat.categorie)) {
+      selectedCategory = plat.categorie;
+    } else if (allCategories.isNotEmpty && plat == null) {
+      selectedCategory = allCategories.first;
+    } else {
+      selectedCategory = "Autre...";
+    }
 
     final dropdownOptions = [...allCategories, "Autre..."];
-    if (plat != null && !allCategories.contains(plat.categorie)) {
-      selectedCategory = "Autre...";
-      categoryController.text = plat.categorie;
+    if (selectedCategory == "Autre...") {
+      categoryController.text = plat?.categorie ?? "";
     } else {
       categoryController.text = selectedCategory;
     }
