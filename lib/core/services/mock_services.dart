@@ -11,7 +11,7 @@ class MockAuthService implements AuthService {
       nom: "L.",
       email: "marie@exemple.fr",
       role: "utilisateur",
-      sexe: "Femme",
+      sexe: "Féminin",
       dateInscription: DateTime(2026, 3, 8),
       dateMaj: DateTime(2026, 6, 12),
     ),
@@ -21,7 +21,7 @@ class MockAuthService implements AuthService {
       nom: "K.",
       email: "marcel@exemple.fr",
       role: "gerant",
-      sexe: "Homme",
+      sexe: "Masculin",
       dateInscription: DateTime(2025, 11, 20),
       dateMaj: DateTime(2026, 6, 10),
     ),
@@ -31,7 +31,7 @@ class MockAuthService implements AuthService {
       nom: "TruEats",
       email: "admin@trueats.bj",
       role: "admin",
-      sexe: "Non precise",
+      sexe: "Masculin",
       dateInscription: DateTime(2025, 1, 1),
       dateMaj: DateTime(2026, 6, 12),
     ),
@@ -71,7 +71,7 @@ class MockAuthService implements AuthService {
         nom: "",
         email: email,
         role: "utilisateur",
-        sexe: "Non precise",
+        sexe: "Masculin",
         dateInscription: DateTime.now(),
         dateMaj: DateTime.now(),
       );
@@ -146,15 +146,17 @@ class MockAuthService implements AuthService {
   }
 
   @override
-  Future<void> setAccountActive(int userId, bool isActive) async {
+  Future<void> setAccountActive(int userId, bool isActive, {int? dureeJours}) async {
     await Future.delayed(const Duration(milliseconds: 250));
     final index = _users.indexWhere((user) => user.id == userId);
     if (index == -1) {
       return;
     }
 
+    final dateSuspension = dureeJours != null ? DateTime.now().add(Duration(days: dureeJours)) : null;
     final updatedUser = _users[index].copyWith(
       isActive: isActive,
+      bloqueJusqua: dateSuspension,
       dateMaj: DateTime.now(),
     );
     _users[index] = updatedUser;
@@ -162,6 +164,16 @@ class MockAuthService implements AuthService {
     if (_currentUser?.id == userId) {
       _currentUser = updatedUser;
       _authController.add(_currentUser);
+    }
+  }
+
+  @override
+  Future<void> deleteAccount() async {
+    await Future.delayed(const Duration(milliseconds: 250));
+    if (_currentUser != null) {
+      _users.removeWhere((user) => user.id == _currentUser!.id);
+      _currentUser = null;
+      _authController.add(null);
     }
   }
 
@@ -369,19 +381,50 @@ class MockRestaurantService implements RestaurantService {
     required int id,
     required String name,
     required String address,
+    String? quartier,
+    String? category,
+    String? typeCuisine,
+    double? latitude,
+    double? longitude,
+    int? superficie,
     String? logoUrl,
     String? photoUrl,
+    String? cipUrl,
+    String? ifuNumero,
+    String? ifuAttestationUrl,
+    bool? estArchive,
   }) async {
     await Future.delayed(const Duration(milliseconds: 250));
     final index = _restaurants.indexWhere((item) => item.id == id);
     if (index != -1) {
-      _restaurants[index] = _restaurants[index].copyWith(
+      final currentRes = _restaurants[index];
+      final nameChanged = currentRes.nom != name;
+      final shouldResetValidation = nameChanged || (!currentRes.estValide && currentRes.motifRejet != null);
+      _restaurants[index] = currentRes.copyWith(
         nom: name,
         adresse: address,
+        quartier: quartier,
+        categorie: category,
+        typeCuisine: typeCuisine,
+        latitude: latitude,
+        longitude: longitude,
+        superficie: superficie,
         logoUrl: logoUrl,
         photoUrl: photoUrl,
+        cipUrl: cipUrl,
+        ifuNumero: ifuNumero,
+        ifuAttestationUrl: ifuAttestationUrl,
+        estArchive: estArchive,
+        motifRejet: shouldResetValidation ? null : currentRes.motifRejet,
+        estValide: shouldResetValidation ? false : currentRes.estValide,
       );
     }
+  }
+
+  @override
+  Future<void> deleteRestaurant(int id) async {
+    await Future.delayed(const Duration(milliseconds: 200));
+    _restaurants.removeWhere((item) => item.id == id);
   }
 
   @override
@@ -515,10 +558,22 @@ class MockReviewService implements ReviewService {
     if (signalementIndex == -1) return;
 
     final signalement = _signalements[signalementIndex];
-    if (!keepReview) {
-      _avisList.removeWhere((avis) => avis.id == signalement.avisId);
+    final updatedSignalement = Signalement(
+      id: signalement.id,
+      avisId: signalement.avisId,
+      avis: signalement.avis.copyWith(estPublie: keepReview),
+      auteurSignalement: signalement.auteurSignalement,
+      raison: signalement.raison,
+      dateSignalement: signalement.dateSignalement,
+      estTraite: true,
+      decision: keepReview ? 'conserve' : 'retire',
+    );
+    _signalements[signalementIndex] = updatedSignalement;
+
+    final avisIndex = _avisList.indexWhere((avis) => avis.id == signalement.avisId);
+    if (avisIndex != -1) {
+      _avisList[avisIndex] = _avisList[avisIndex].copyWith(estPublie: keepReview);
     }
-    _signalements.removeAt(signalementIndex);
   }
 }
 
@@ -541,6 +596,11 @@ class MockLocationService implements LocationService {
   @override
   Future<bool> isPermissionGranted() async {
     return _permissionGranted;
+  }
+
+  @override
+  Future<bool> isPermissionDeniedForever() async {
+    return false;
   }
 
   @override

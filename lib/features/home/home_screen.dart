@@ -245,16 +245,21 @@ class _HomeScreenState extends State<HomeScreen> {
                     Row(
                       children: [
                         const Icon(
-                          Icons.star,
-                          color: AppColors.terracotta,
-                          size: 16,
+                          Icons.location_on_outlined,
+                          color: AppColors.grisTexte,
+                          size: 14,
                         ),
                         const SizedBox(width: 4),
-                        Text(
-                          restaurant.id == 1
-                              ? '4.7'
-                              : (restaurant.id == 2 ? '4.6' : '4.8'),
-                          style: textTheme.labelLarge?.copyWith(fontSize: 13),
+                        Expanded(
+                          child: Text(
+                            restaurant.adresse,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: textTheme.bodyMedium?.copyWith(
+                              color: AppColors.grisTexte,
+                              fontSize: 12,
+                            ),
+                          ),
                         ),
                       ],
                     ),

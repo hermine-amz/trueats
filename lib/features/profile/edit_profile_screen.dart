@@ -29,7 +29,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _nomController = TextEditingController(text: widget.user.nom);
     _prenomController = TextEditingController(text: widget.user.prenom);
     _emailController = TextEditingController(text: widget.user.email);
-    _selectedSexe = widget.user.sexe;
+    _selectedSexe = (widget.user.sexe == "Masculin" || widget.user.sexe == "Féminin")
+        ? widget.user.sexe
+        : "Féminin";
   }
 
   @override
@@ -149,12 +151,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         prefixIcon: Icon(Icons.wc_outlined),
                       ),
                       items: const [
-                        DropdownMenuItem(value: "Femme", child: Text("Femme")),
-                        DropdownMenuItem(value: "Homme", child: Text("Homme")),
-                        DropdownMenuItem(
-                          value: "Non precise",
-                          child: Text("Prefere ne pas preciser"),
-                        ),
+                        DropdownMenuItem(value: "Féminin", child: Text("Féminin")),
+                        DropdownMenuItem(value: "Masculin", child: Text("Masculin")),
                       ],
                       onChanged: (value) {
                         if (value == null) return;

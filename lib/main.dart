@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'core/theme.dart';
 import 'core/services/service_locator.dart';
-import 'features/onboarding/onboarding_screen.dart';
+import 'features/onboarding/splash_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -18,7 +18,7 @@ class TruEatsApp extends StatelessWidget {
       title: 'TruEats',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
-      home: const OnboardingScreen(),
+      home: const SplashScreen(),
     );
   }
 }

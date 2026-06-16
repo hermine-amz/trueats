@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../../core/services/http_services.dart';
 import '../../core/services/interfaces.dart';
 import '../../core/services/service_locator.dart';
 import '../../core/theme.dart';
@@ -88,8 +87,8 @@ class _AdminConsoleState extends State<AdminConsole> {
     }
   }
 
-  Future<void> _toggleUser(User user, bool isActive) async {
-    await ServiceLocator.authService.setAccountActive(user.id, isActive);
+  Future<void> _toggleUser(User user, bool isActive, {int? dureeJours}) async {
+    await ServiceLocator.authService.setAccountActive(user.id, isActive, dureeJours: dureeJours);
     await _loadAdminData();
 
     if (mounted) {
@@ -104,20 +103,6 @@ class _AdminConsoleState extends State<AdminConsole> {
     }
   }
 
-  Future<bool> _confirmToggleUser(User user, bool isActive) {
-    return showAppConfirmDialog(
-      context,
-      title: isActive ? 'Reactiver ce compte ?' : 'Suspendre ce compte ?',
-      message: isActive
-          ? "${user.name} pourra de nouveau utiliser son compte."
-          : "${user.name} ne pourra plus acceder a son compte jusqu'a reactivation.",
-      confirmLabel: isActive ? 'Reactiver' : 'Suspendre',
-      icon: isActive
-          ? Icons.lock_open_rounded
-          : Icons.block_rounded,
-      type: isActive ? AppFeedbackType.success : AppFeedbackType.warning,
-    );
-  }
 
   String _getFullUrl(String? path) {
     return ImageUrlHelper.resolve(path);
@@ -202,7 +187,7 @@ class _AdminConsoleState extends State<AdminConsole> {
     );
   }
 
-  Future<void> _validerDemande(int restaurantId, {required bool accepte, String? motifRejet}) async {
+  Future<void> _validerDemande(int restaurantId, {required bool accepte, String? motifRejet, VoidCallback? onComplete}) async {
     setState(() {
       _isLoading = true;
     });
@@ -225,6 +210,9 @@ class _AdminConsoleState extends State<AdminConsole> {
           type: accepte ? AppFeedbackType.success : AppFeedbackType.error,
         );
       }
+      if (onComplete != null) {
+        onComplete();
+      }
     } catch (e) {
       if (mounted) {
         showAppNotification(
@@ -240,7 +228,7 @@ class _AdminConsoleState extends State<AdminConsole> {
     }
   }
 
-  void _promptRejet(int restaurantId) {
+  void _promptRejet(int restaurantId, {VoidCallback? onComplete}) {
     final controller = TextEditingController();
     showDialog<void>(
       context: context,
@@ -324,6 +312,7 @@ class _AdminConsoleState extends State<AdminConsole> {
                           restaurantId,
                           accepte: false,
                           motifRejet: motif,
+                          onComplete: onComplete,
                         );
                       },
                       style: ElevatedButton.styleFrom(
@@ -457,13 +446,13 @@ class _AdminConsoleState extends State<AdminConsole> {
                         children: [
                           _buildAdminKpiCard(
                             context,
-                            _signalements.length.toString(),
+                            _signalements.where((s) => !s.estTraite).length.toString(),
                             "A TRAITER",
                             AppColors.rougeSignalement,
                           ),
                           _buildAdminKpiCard(
                             context,
-                            _demandes.length.toString(),
+                            _demandes.where((d) => !d.estValide && d.motifRejet == null).length.toString(),
                             "DEMANDES",
                             AppColors.terracotta,
                           ),
@@ -483,9 +472,9 @@ class _AdminConsoleState extends State<AdminConsole> {
                         context,
                         Icons.playlist_add_check_rounded,
                         "Demandes d'inscriptions",
-                        _demandes.isEmpty
+                        _demandes.where((d) => !d.estValide && d.motifRejet == null).isEmpty
                             ? "Aucune demande en attente"
-                            : "${_demandes.length} demande(s) en attente",
+                            : "${_demandes.where((d) => !d.estValide && d.motifRejet == null).length} demande(s) en attente",
                         () async {
                           await Navigator.of(context).push(
                             MaterialPageRoute(
@@ -504,9 +493,9 @@ class _AdminConsoleState extends State<AdminConsole> {
                         context,
                         Icons.gavel_rounded,
                         "Modération des avis",
-                        _signalements.isEmpty
+                        _signalements.where((s) => !s.estTraite).isEmpty
                             ? "Aucun signalement en attente"
-                            : "${_signalements.length} signalement(s) à traiter",
+                            : "${_signalements.where((s) => !s.estTraite).length} signalement(s) à traiter",
                         () async {
                           await Navigator.of(context).push(
                             MaterialPageRoute(
@@ -520,7 +509,7 @@ class _AdminConsoleState extends State<AdminConsole> {
                           _loadAdminData();
                         },
                       ),
-
+ 
                       _buildActivityRow(
                         context,
                         Icons.business_center_outlined,
@@ -533,11 +522,8 @@ class _AdminConsoleState extends State<AdminConsole> {
                                 roleFilter: 'gerant',
                                 initialUsers: _users,
                                 onRefresh: _loadAdminData,
-                                onToggleActive: (user, active) async {
-                                  final confirmed = await _confirmToggleUser(user, active);
-                                  if (confirmed) {
-                                    await _toggleUser(user, active);
-                                  }
+                                onToggleActive: (user, active, {dureeJours}) async {
+                                  await _toggleUser(user, active, dureeJours: dureeJours);
                                 },
                               ),
                             ),
@@ -545,7 +531,7 @@ class _AdminConsoleState extends State<AdminConsole> {
                           _loadAdminData();
                         },
                       ),
-
+ 
                       _buildActivityRow(
                         context,
                         Icons.people_outline,
@@ -558,11 +544,8 @@ class _AdminConsoleState extends State<AdminConsole> {
                                 roleFilter: 'utilisateur',
                                 initialUsers: _users,
                                 onRefresh: _loadAdminData,
-                                onToggleActive: (user, active) async {
-                                  final confirmed = await _confirmToggleUser(user, active);
-                                  if (confirmed) {
-                                    await _toggleUser(user, active);
-                                  }
+                                onToggleActive: (user, active, {dureeJours}) async {
+                                  await _toggleUser(user, active, dureeJours: dureeJours);
                                 },
                               ),
                             ),
@@ -652,18 +635,34 @@ class _AdminConsoleState extends State<AdminConsole> {
     );
   }
 
-  String _getTimeAgo(DateTime time) {
-    final diff = DateTime.now().difference(time);
-    if (diff.inHours < 1) {
-      return "${diff.inMinutes}m";
+
+  Widget _buildDemandeStatusBadge(DemandeRestaurant demande) {
+    Color color;
+    String label;
+    if (demande.estValide) {
+      color = AppColors.sauge;
+      label = "Valide";
+    } else if (demande.motifRejet != null) {
+      color = AppColors.rougeSignalement;
+      label = "Rejete";
+    } else {
+      color = AppColors.terracotta;
+      label = "En attente";
     }
-    if (diff.inDays < 1) {
-      return "${diff.inHours}h";
-    }
-    return "${diff.inDays}j";
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.bold),
+      ),
+    );
   }
 
-  Widget _buildDemandeCard(BuildContext context, DemandeRestaurant demande) {
+  Widget _buildDemandeCard(BuildContext context, DemandeRestaurant demande, {VoidCallback? onActionCompleted}) {
     final textTheme = Theme.of(context).textTheme;
     final gerantNom = demande.gerant != null
         ? "${demande.gerant!['prenom'] ?? ''} ${demande.gerant!['nom'] ?? ''}".trim()
@@ -713,20 +712,43 @@ class _AdminConsoleState extends State<AdminConsole> {
                   ],
                 ),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: AppColors.cremeFonce,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppColors.grisBordure),
-                ),
-                child: Text(
-                  "${demande.superficie ?? 0} m²",
-                  style: textTheme.labelLarge?.copyWith(fontSize: 12),
-                ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: AppColors.cremeFonce,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppColors.grisBordure),
+                    ),
+                    child: Text(
+                      "${demande.superficie ?? 0} m²",
+                      style: textTheme.labelLarge?.copyWith(fontSize: 12),
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  _buildDemandeStatusBadge(demande),
+                ],
               ),
             ],
           ),
+          if (demande.motifRejet != null) ...[
+            const SizedBox(height: 10),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: AppColors.rougeSignalement.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: AppColors.rougeSignalement.withOpacity(0.2)),
+              ),
+              child: Text(
+                "Motif de rejet : ${demande.motifRejet}",
+                style: const TextStyle(color: AppColors.rougeSignalement, fontSize: 12),
+              ),
+            ),
+          ],
           const SizedBox(height: 12),
           const Divider(color: AppColors.grisBordure, height: 1),
           const SizedBox(height: 12),
@@ -764,44 +786,47 @@ class _AdminConsoleState extends State<AdminConsole> {
           const SizedBox(height: 18),
           Row(
             children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () => _promptRejet(demande.id),
-                  icon: const Icon(Icons.close, size: 16),
-                  label: const Text("Rejeter"),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.rougeSignalement,
-                    side: const BorderSide(color: AppColors.rougeSignalement),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
+              if (demande.estValide || (!demande.estValide && demande.motifRejet == null))
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => _promptRejet(demande.id, onComplete: onActionCompleted),
+                    icon: const Icon(Icons.close, size: 16),
+                    label: const Text("Rejeter"),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.rougeSignalement,
+                      side: const BorderSide(color: AppColors.rougeSignalement),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: () async {
-                    final confirmed = await showAppConfirmDialog(
-                      context,
-                      title: 'Valider ce restaurant ?',
-                      message:
-                          "${demande.nom} sera publie et le compte client deviendra gerant.",
-                      confirmLabel: 'Valider',
-                      icon: Icons.verified_rounded,
-                      type: AppFeedbackType.success,
-                    );
-                    if (confirmed) {
-                      _validerDemande(demande.id, accepte: true);
-                    }
-                  },
-                  icon: const Icon(Icons.check, size: 16),
-                  label: const Text("Valider"),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.sauge,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
+              if (demande.estValide || (!demande.estValide && demande.motifRejet == null))
+                const SizedBox(width: 10),
+              if (!demande.estValide)
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () async {
+                      final confirmed = await showAppConfirmDialog(
+                        context,
+                        title: 'Valider ce restaurant ?',
+                        message:
+                            "${demande.nom} sera publie et le compte client deviendra gerant.",
+                        confirmLabel: 'Valider',
+                        icon: Icons.verified_rounded,
+                        type: AppFeedbackType.success,
+                      );
+                      if (confirmed) {
+                        _validerDemande(demande.id, accepte: true, onComplete: onActionCompleted);
+                      }
+                    },
+                    icon: const Icon(Icons.check, size: 16),
+                    label: const Text("Valider"),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.sauge,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
                   ),
                 ),
-              ),
             ],
           ),
         ],
@@ -1055,14 +1080,27 @@ class _ModerationAvisPageState extends State<_ModerationAvisPage> {
     _signalements = widget.initialSignalements;
   }
 
+  @override
+  void didUpdateWidget(covariant _ModerationAvisPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.initialSignalements != oldWidget.initialSignalements) {
+      setState(() {
+        _signalements = widget.initialSignalements;
+      });
+    }
+  }
+
   Future<void> _refresh() async {
     setState(() {
       _isLoading = true;
     });
+    // On met a jour l'etat parent ET on recupere les nouvelles donnees
+    // pour pallier l'absence de reconstruction automatique de la route par le Navigator.
     await widget.onRefresh();
+    final freshSignalements = await ServiceLocator.reviewService.getSignalements();
     if (mounted) {
       setState(() {
-        _signalements = widget.initialSignalements;
+        _signalements = freshSignalements;
         _isLoading = false;
       });
     }
@@ -1070,7 +1108,6 @@ class _ModerationAvisPageState extends State<_ModerationAvisPage> {
 
   @override
   Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
     final totalPages = (_signalements.length / _itemsPerPage).ceil();
     final startIndex = _currentPage * _itemsPerPage;
     final endIndex = (startIndex + _itemsPerPage < _signalements.length)
@@ -1155,6 +1192,34 @@ class _ModerationAvisPageState extends State<_ModerationAvisPage> {
     );
   }
 
+  Widget _buildSignalementStatusBadge(Signalement signalement) {
+    Color color;
+    String label;
+    if (signalement.estTraite) {
+      if (signalement.decision == 'conserve') {
+        color = AppColors.sauge;
+        label = "Conserve";
+      } else {
+        color = AppColors.rougeSignalement;
+        label = "Retire";
+      }
+    } else {
+      color = AppColors.terracotta;
+      label = "A traiter";
+    }
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.bold),
+      ),
+    );
+  }
+
   Widget _buildModerationCard(BuildContext context, Signalement signalement) {
     final textTheme = Theme.of(context).textTheme;
 
@@ -1179,6 +1244,8 @@ class _ModerationAvisPageState extends State<_ModerationAvisPage> {
                   style: textTheme.titleLarge?.copyWith(fontSize: 14, fontWeight: FontWeight.bold),
                 ),
               ),
+              const SizedBox(width: 8),
+              _buildSignalementStatusBadge(signalement),
             ],
           ),
           const SizedBox(height: 12),
@@ -1208,37 +1275,40 @@ class _ModerationAvisPageState extends State<_ModerationAvisPage> {
           const SizedBox(height: 16),
           Row(
             children: [
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: () async {
-                    await widget.onResolve(signalement, false);
-                    _refresh();
-                  },
-                  icon: const Icon(Icons.delete_outline, size: 16),
-                  label: const Text("Retirer"),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.rougeSignalement,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
+              if (!signalement.estTraite || (signalement.estTraite && signalement.decision == 'conserve'))
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () async {
+                      await widget.onResolve(signalement, false);
+                      _refresh();
+                    },
+                    icon: const Icon(Icons.delete_outline, size: 16),
+                    label: const Text("Retirer"),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.rougeSignalement,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: () async {
-                    await widget.onResolve(signalement, true);
-                    _refresh();
-                  },
-                  icon: const Icon(Icons.check, size: 16),
-                  label: const Text("Conserver"),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.sauge,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
+              if (!signalement.estTraite)
+                const SizedBox(width: 10),
+              if (!signalement.estTraite || (signalement.estTraite && signalement.decision == 'retire'))
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () async {
+                      await widget.onResolve(signalement, true);
+                      _refresh();
+                    },
+                    icon: const Icon(Icons.check, size: 16),
+                    label: const Text("Conserver"),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.sauge,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
                   ),
                 ),
-              ),
             ],
           ),
         ],
@@ -1251,7 +1321,7 @@ class _ComptesPage extends StatefulWidget {
   final String roleFilter;
   final List<User> initialUsers;
   final Future<void> Function() onRefresh;
-  final Future<void> Function(User, bool) onToggleActive;
+  final Future<void> Function(User, bool, {int? dureeJours}) onToggleActive;
 
   const _ComptesPage({
     required this.roleFilter,
@@ -1265,6 +1335,7 @@ class _ComptesPage extends StatefulWidget {
 }
 
 class _ComptesPageState extends State<_ComptesPage> {
+  late List<User> _allUsers;
   late List<User> _filteredUsers;
   bool _isLoading = false;
   String _searchQuery = "";
@@ -1274,11 +1345,23 @@ class _ComptesPageState extends State<_ComptesPage> {
   @override
   void initState() {
     super.initState();
+    _allUsers = widget.initialUsers;
     _applyFilterAndSearch();
   }
 
+  @override
+  void didUpdateWidget(covariant _ComptesPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.initialUsers != oldWidget.initialUsers) {
+      setState(() {
+        _allUsers = widget.initialUsers;
+        _applyFilterAndSearch();
+      });
+    }
+  }
+
   void _applyFilterAndSearch() {
-    _filteredUsers = widget.initialUsers.where((u) {
+    _filteredUsers = _allUsers.where((u) {
       final matchesRole = u.role == widget.roleFilter;
       final matchesSearch = u.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
           u.email.toLowerCase().contains(_searchQuery.toLowerCase());
@@ -1291,8 +1374,10 @@ class _ComptesPageState extends State<_ComptesPage> {
       _isLoading = true;
     });
     await widget.onRefresh();
+    final freshUsers = await ServiceLocator.authService.getAllUsers();
     if (mounted) {
       setState(() {
+        _allUsers = freshUsers;
         _applyFilterAndSearch();
         _isLoading = false;
       });
@@ -1316,7 +1401,11 @@ class _ComptesPageState extends State<_ComptesPage> {
     try {
       await ServiceLocator.adminService.deleteUser(user.id);
       await widget.onRefresh();
+      final freshUsers = await ServiceLocator.authService.getAllUsers();
       if (mounted) {
+        setState(() {
+          _allUsers = freshUsers;
+        });
         showAppNotification(
           context,
           title: "Compte supprimé",
@@ -1392,72 +1481,131 @@ class _ComptesPageState extends State<_ComptesPage> {
                   Expanded(
                     child: _filteredUsers.isEmpty
                         ? const Center(child: Text("Aucun compte trouvé."))
-                        : SingleChildScrollView(
-                            padding: const EdgeInsets.symmetric(horizontal: 24),
-                            child: FittedBox(
-                              fit: BoxFit.fitWidth,
-                              child: DataTable(
-                                horizontalMargin: 12,
-                                columnSpacing: 20,
-                                columns: const [
-                                  DataColumn(label: Text("ID")),
-                                  DataColumn(label: Text("Nom")),
-                                  DataColumn(label: Text("Email")),
-                                  DataColumn(label: Text("Statut")),
-                                  DataColumn(label: Text("Actions")),
-                                ],
-                                rows: displayedUsers.map((user) {
-                                  return DataRow(cells: [
-                                    DataCell(Text(user.id.toString())),
-                                    DataCell(Text(user.name)),
-                                    DataCell(Text(user.email)),
-                                    DataCell(
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                        decoration: BoxDecoration(
-                                          color: user.isActive ? AppColors.vertClair : AppColors.rougeClair,
-                                          borderRadius: BorderRadius.circular(8),
-                                        ),
-                                        child: Text(
-                                          user.isActive ? "Actif" : "Suspendu",
-                                          style: TextStyle(
-                                            color: user.isActive ? AppColors.sauge : AppColors.rougeSignalement,
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 12,
-                                          ),
+                        : ListView.builder(
+                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                            itemCount: displayedUsers.length,
+                            itemBuilder: (context, index) {
+                              final user = displayedUsers[index];
+                              return Container(
+                                margin: const EdgeInsets.only(bottom: 12),
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFFDFBF7),
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(color: AppColors.grisBordure),
+                                ),
+                                child: Row(
+                                  children: [
+                                    CircleAvatar(
+                                      backgroundColor: AppColors.orangeClair,
+                                      child: Text(
+                                        user.name.isNotEmpty ? user.name[0].toUpperCase() : "?",
+                                        style: const TextStyle(
+                                          color: AppColors.terracotta,
+                                          fontWeight: FontWeight.bold,
                                         ),
                                       ),
                                     ),
-                                    DataCell(
-                                      Row(
-                                        mainAxisSize: MainAxisSize.min,
+                                    const SizedBox(width: 14),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
                                         children: [
-                                          IconButton(
-                                            icon: Icon(
-                                              user.isActive ? Icons.lock_outline : Icons.lock_open,
-                                              color: AppColors.marronFonce,
-                                              size: 20,
-                                            ),
-                                            onPressed: () async {
-                                              await widget.onToggleActive(user, !user.isActive);
-                                              _refresh();
-                                            },
+                                          Row(
+                                            children: [
+                                              Expanded(
+                                                child: Text(
+                                                  user.name,
+                                                  style: const TextStyle(
+                                                    fontSize: 15,
+                                                    fontWeight: FontWeight.bold,
+                                                    color: AppColors.marronFonce,
+                                                  ),
+                                                  maxLines: 1,
+                                                  overflow: TextOverflow.ellipsis,
+                                                ),
+                                              ),
+                                              const SizedBox(width: 8),
+                                              Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                                decoration: BoxDecoration(
+                                                  color: user.isActive ? AppColors.vertClair : AppColors.rougeClair,
+                                                  borderRadius: BorderRadius.circular(8),
+                                                ),
+                                                child: Text(
+                                                  user.isActive ? "Actif" : "Suspendu",
+                                                  style: TextStyle(
+                                                    color: user.isActive ? AppColors.sauge : AppColors.rougeSignalement,
+                                                    fontWeight: FontWeight.bold,
+                                                    fontSize: 11,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
                                           ),
-                                          IconButton(
-                                            icon: const Icon(
-                                              Icons.delete_outline,
-                                              color: AppColors.rougeSignalement,
-                                              size: 20,
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            user.email,
+                                            style: const TextStyle(
+                                              fontSize: 13,
+                                              color: AppColors.grisTexte,
                                             ),
-                                            onPressed: () => _deleteAccount(user),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
                                           ),
                                         ],
                                       ),
                                     ),
-                                  ]);
-                                }).toList(),
-                              ),
-                            ),
+                                    const SizedBox(width: 12),
+                                    Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        IconButton(
+                                          icon: Icon(
+                                            user.isActive ? Icons.lock_outline : Icons.lock_open,
+                                            color: AppColors.marronFonce,
+                                            size: 22,
+                                          ),
+                                          onPressed: () async {
+                                            if (user.isActive) {
+                                              final duree = await _showBlockDurationDialog(context, user);
+                                              if (duree != null) {
+                                                final int? days = duree == -1 ? null : duree;
+                                                await widget.onToggleActive(user, false, dureeJours: days);
+                                                _refresh();
+                                              }
+                                            } else {
+                                              final confirmed = await showAppConfirmDialog(
+                                                context,
+                                                title: 'Reactiver ce compte ?',
+                                                message: "Le compte de ${user.name} sera reactive.",
+                                                confirmLabel: 'Reactiver',
+                                                icon: Icons.lock_open_rounded,
+                                                type: AppFeedbackType.success,
+                                              );
+                                              if (confirmed) {
+                                                await widget.onToggleActive(user, true);
+                                                _refresh();
+                                              }
+                                            }
+                                          },
+                                          tooltip: user.isActive ? "Bloquer" : "Activer",
+                                        ),
+                                        IconButton(
+                                          icon: const Icon(
+                                            Icons.delete_outline,
+                                            color: AppColors.rougeSignalement,
+                                            size: 22,
+                                          ),
+                                          onPressed: () => _deleteAccount(user),
+                                          tooltip: "Supprimer",
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
                           ),
                   ),
                   if (totalPages > 1)
@@ -1506,12 +1654,97 @@ class _ComptesPageState extends State<_ComptesPage> {
       ),
     );
   }
+
+  Future<int?> _showBlockDurationDialog(BuildContext context, User user) {
+    return showDialog<int?>(
+      context: context,
+      builder: (context) {
+        return Dialog(
+          backgroundColor: AppColors.creme,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(22, 22, 22, 18),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: AppColors.rougeSignalement.withOpacity(0.12),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.block_rounded,
+                        color: AppColors.rougeSignalement,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        "Bloquer le compte",
+                        style: Theme.of(context)
+                            .textTheme
+                            .displaySmall
+                            ?.copyWith(fontSize: 20),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  "Choisissez la duree du blocage pour le compte de ${user.name} (${user.email}) :",
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+                const SizedBox(height: 16),
+                ListTile(
+                  title: const Text("3 jours"),
+                  leading: const Icon(Icons.timer_outlined, color: AppColors.marronFonce),
+                  onTap: () => Navigator.of(context).pop(3),
+                ),
+                ListTile(
+                  title: const Text("7 jours"),
+                  leading: const Icon(Icons.date_range_outlined, color: AppColors.marronFonce),
+                  onTap: () => Navigator.of(context).pop(7),
+                ),
+                ListTile(
+                  title: const Text("30 jours"),
+                  leading: const Icon(Icons.calendar_month_outlined, color: AppColors.marronFonce),
+                  onTap: () => Navigator.of(context).pop(30),
+                ),
+                ListTile(
+                  title: const Text("Definitif (Permanent)"),
+                  leading: const Icon(Icons.block_rounded, color: AppColors.rougeSignalement),
+                  onTap: () => Navigator.of(context).pop(-1),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(null),
+                      child: const Text("Annuler"),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
 }
 
 class _DemandesValidationPage extends StatefulWidget {
   final List<DemandeRestaurant> initialDemandes;
   final Future<void> Function() onRefresh;
-  final Widget Function(BuildContext, DemandeRestaurant) cardBuilder;
+  final Widget Function(BuildContext, DemandeRestaurant, {VoidCallback? onActionCompleted}) cardBuilder;
 
   const _DemandesValidationPage({
     required this.initialDemandes,
@@ -1526,8 +1759,6 @@ class _DemandesValidationPage extends StatefulWidget {
 class _DemandesValidationPageState extends State<_DemandesValidationPage> {
   late List<DemandeRestaurant> _demandes;
   bool _isLoading = false;
-  int _currentPage = 0;
-  static const int _itemsPerPage = 5;
 
   @override
   void initState() {
@@ -1535,29 +1766,149 @@ class _DemandesValidationPageState extends State<_DemandesValidationPage> {
     _demandes = widget.initialDemandes;
   }
 
+  @override
+  void didUpdateWidget(covariant _DemandesValidationPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.initialDemandes != oldWidget.initialDemandes) {
+      setState(() {
+        _demandes = widget.initialDemandes;
+      });
+    }
+  }
+
   Future<void> _refresh() async {
     setState(() {
       _isLoading = true;
     });
+    // Note de soutenance : On rappelle onRefresh() pour l'etat parent et
+    // on recharge localement les demandes via le service admin.
     await widget.onRefresh();
+    final freshDemandes = await ServiceLocator.adminService.getDemandes();
     if (mounted) {
       setState(() {
-        _demandes = widget.initialDemandes;
+        _demandes = freshDemandes;
         _isLoading = false;
       });
     }
   }
 
+  void _showDemandeDetailsDialog(BuildContext context, DemandeRestaurant demande) {
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+          child: SingleChildScrollView(
+            child: widget.cardBuilder(
+              dialogContext,
+              demande,
+              onActionCompleted: () {
+                Navigator.of(dialogContext).pop();
+                _refresh();
+              },
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildCompactDemandeRow(BuildContext context, DemandeRestaurant demande) {
+    final textTheme = Theme.of(context).textTheme;
+
+    Color statusColor;
+    String statusLabel;
+    if (demande.estValide) {
+      statusColor = AppColors.sauge;
+      statusLabel = "Valide";
+    } else {
+      statusColor = AppColors.rougeSignalement;
+      statusLabel = "Rejete";
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFDFBF7),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.grisBordure),
+      ),
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+        leading: Container(
+          width: 40,
+          height: 40,
+          decoration: const BoxDecoration(
+            color: AppColors.orangeClair,
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(
+            Icons.storefront_outlined,
+            color: AppColors.terracotta,
+            size: 20,
+          ),
+        ),
+        title: Text(
+          demande.nom,
+          style: textTheme.titleLarge?.copyWith(fontSize: 15, fontWeight: FontWeight.bold),
+        ),
+        subtitle: Text(
+          "${demande.typeCuisine ?? 'Cuisine'} · ${demande.quartier ?? 'Adresse'}",
+          style: textTheme.bodyMedium?.copyWith(fontSize: 12, color: AppColors.grisTexte),
+        ),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: statusColor.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                statusLabel,
+                style: TextStyle(color: statusColor, fontSize: 11, fontWeight: FontWeight.bold),
+              ),
+            ),
+            const SizedBox(width: 8),
+            IconButton(
+              icon: const Icon(
+                Icons.settings_suggest_outlined,
+                color: AppColors.marronFonce,
+                size: 20,
+              ),
+              onPressed: () => _showDemandeDetailsDialog(context, demande),
+              tooltip: "Gerer la decision",
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSectionHeader(String title, {required IconData icon}) {
+    return Row(
+      children: [
+        Icon(icon, size: 16, color: AppColors.terracotta),
+        const SizedBox(width: 8),
+        Text(
+          title,
+          style: const TextStyle(
+            color: AppColors.terracotta,
+            fontSize: 11,
+            letterSpacing: 1.5,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final totalPages = (_demandes.length / _itemsPerPage).ceil();
-    final startIndex = _currentPage * _itemsPerPage;
-    final endIndex = (startIndex + _itemsPerPage < _demandes.length)
-        ? startIndex + _itemsPerPage
-        : _demandes.length;
-    final displayedDemandes = _demandes.isEmpty
-        ? <DemandeRestaurant>[]
-        : _demandes.sublist(startIndex, endIndex);
+    final demandesAttente = _demandes.where((d) => !d.estValide && d.motifRejet == null).toList();
+    final demandesTraitees = _demandes.where((d) => d.estValide || d.motifRejet != null).toList();
 
     return Scaffold(
       backgroundColor: AppColors.creme,
@@ -1573,63 +1924,55 @@ class _DemandesValidationPageState extends State<_DemandesValidationPage> {
       body: SafeArea(
         child: _isLoading
             ? const Center(child: CircularProgressIndicator())
-            : _demandes.isEmpty
-                ? const Center(child: Text("Aucune demande d'inscription en attente."))
-                : Column(
-                    children: [
-                      Expanded(
-                        child: ListView.builder(
-                          padding: const EdgeInsets.all(24),
-                          itemCount: displayedDemandes.length,
-                          itemBuilder: (context, index) {
-                            final demande = displayedDemandes[index];
-                            return widget.cardBuilder(context, demande);
-                          },
+            : RefreshIndicator(
+                onRefresh: _refresh,
+                child: ListView(
+                  padding: const EdgeInsets.all(24),
+                  children: [
+                    _buildSectionHeader("DEMANDES EN ATTENTE", icon: Icons.hourglass_top_rounded),
+                    const SizedBox(height: 12),
+                    if (demandesAttente.isEmpty)
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 24),
+                        child: Center(
+                          child: Text(
+                            "Aucune demande en attente.",
+                            style: TextStyle(color: AppColors.grisTexte, fontStyle: FontStyle.italic),
+                          ),
                         ),
-                      ),
-                      if (totalPages > 1)
-                        _buildPaginationControls(totalPages),
-                    ],
-                  ),
-      ),
-    );
-  }
+                      )
+                    else
+                      ...demandesAttente.map((demande) {
+                        return widget.cardBuilder(
+                          context,
+                          demande,
+                          onActionCompleted: _refresh,
+                        );
+                      }),
+                    
+                    const SizedBox(height: 24),
+                    const Divider(color: AppColors.grisBordure, height: 1),
+                    const SizedBox(height: 24),
 
-  Widget _buildPaginationControls(int totalPages) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 14),
-      decoration: const BoxDecoration(
-        color: const Color(0xFFFDFBF7),
-        border: Border(top: BorderSide(color: AppColors.grisBordure)),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          IconButton(
-            icon: const Icon(Icons.chevron_left),
-            onPressed: _currentPage > 0
-                ? () {
-                    setState(() {
-                      _currentPage--;
-                    });
-                  }
-                : null,
-          ),
-          Text(
-            "Page ${_currentPage + 1} sur $totalPages",
-            style: const TextStyle(fontWeight: FontWeight.bold),
-          ),
-          IconButton(
-            icon: const Icon(Icons.chevron_right),
-            onPressed: _currentPage < totalPages - 1
-                ? () {
-                    setState(() {
-                      _currentPage++;
-                    });
-                  }
-                : null,
-          ),
-        ],
+                    _buildSectionHeader("HISTORIQUE DES DECISIONS", icon: Icons.history_rounded),
+                    const SizedBox(height: 12),
+                    if (demandesTraitees.isEmpty)
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 24),
+                        child: Center(
+                          child: Text(
+                            "Aucun historique de decision.",
+                            style: TextStyle(color: AppColors.grisTexte, fontStyle: FontStyle.italic),
+                          ),
+                        ),
+                      )
+                    else
+                      ...demandesTraitees.map((demande) {
+                        return _buildCompactDemandeRow(context, demande);
+                      }),
+                  ],
+                ),
+              ),
       ),
     );
   }

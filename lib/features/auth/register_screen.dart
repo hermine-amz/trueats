@@ -22,7 +22,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _telephoneController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
 
-  String _selectedSexe = "Femme";
+  String _selectedSexe = "Féminin";
   bool _isLoading = false;
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
@@ -210,8 +210,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         labelText: "Sexe",
                       ),
                       items: const [
-                        DropdownMenuItem(value: "Femme", child: Text("Femme")),
-                        DropdownMenuItem(value: "Homme", child: Text("Homme")),
+                        DropdownMenuItem(value: "Féminin", child: Text("Féminin")),
+                        DropdownMenuItem(value: "Masculin", child: Text("Masculin")),
                       ],
                       onChanged: (value) {
                         if (value == null) return;

@@ -4,7 +4,7 @@ import '../../core/services/interfaces.dart';
 import '../../core/services/service_locator.dart';
 import '../../core/theme.dart';
 import '../auth/login_screen.dart';
-import '../gerant/managed_restaurants_screen.dart';
+import '../gerant/gerant_dashboard.dart';
 import '../gerant/register_restaurant_screen.dart';
 import '../admin/admin_console.dart';
 import '../../core/widgets/app_feedback.dart';
@@ -84,7 +84,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _onGestionRestaurantsTap() async {
     await Navigator.of(context).push(
-      MaterialPageRoute(builder: (context) => const ManagedRestaurantsScreen()),
+      MaterialPageRoute(builder: (context) => const GerantDashboard()),
     );
     _loadProfile();
   }
@@ -150,36 +150,56 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           }
                         },
                 ),
-                _buildSettingsTile(
-                  context,
-                  icon: Icons.location_on_outlined,
-                  title: "Verification GPS",
-                  subtitle: "Utilisee uniquement pour certifier les avis",
-                  onTap: () {
-                    Navigator.of(context).pop();
-                    showAppNotification(
-                      context,
-                      title: "Vérification GPS",
-                      message: "La vérification GPS est déclenchée au moment de publier un avis.",
-                      type: AppFeedbackType.info,
-                    );
-                  },
-                ),
-                _buildSettingsTile(
-                  context,
-                  icon: Icons.security_outlined,
-                  title: "Securite du compte",
-                  subtitle: "Compte actif et acces utilisateur",
-                  onTap: () {
-                    Navigator.of(context).pop();
-                    showAppNotification(
-                      context,
-                      title: "Sécurité",
-                      message: "Options de sécurité en préparation.",
-                      type: AppFeedbackType.info,
-                    );
-                  },
-                ),
+
+                if (user != null)
+                  _buildSettingsTile(
+                    context,
+                    icon: Icons.delete_forever_outlined,
+                    title: "Supprimer mon compte",
+                    subtitle: "Suppression définitive et immédiate",
+                    onTap: () async {
+                      Navigator.of(context).pop();
+                      final confirmed = await showAppConfirmDialog(
+                        context,
+                        title: "Supprimer mon compte ?",
+                        message: "Cette action est irréversible. Toutes vos données seront définitivement supprimées.",
+                        confirmLabel: "Supprimer",
+                        cancelLabel: "Annuler",
+                        icon: Icons.delete_forever_outlined,
+                        type: AppFeedbackType.error,
+                      );
+                      if (confirmed == true) {
+                        setState(() {
+                          _isLoading = true;
+                        });
+                        try {
+                          await ServiceLocator.authService.deleteAccount();
+                          if (!mounted) return;
+                          showAppNotification(
+                            context,
+                            title: "Compte supprimé",
+                            message: "Votre compte a été définitivement supprimé.",
+                            type: AppFeedbackType.success,
+                          );
+                          Navigator.of(context).pushAndRemoveUntil(
+                            MaterialPageRoute(builder: (_) => const LoginScreen()),
+                            (route) => false,
+                          );
+                        } catch (e) {
+                          if (!mounted) return;
+                          setState(() {
+                            _isLoading = false;
+                          });
+                          showAppNotification(
+                            context,
+                            title: "Erreur",
+                            message: "Impossible de supprimer le compte : $e",
+                            type: AppFeedbackType.error,
+                          );
+                        }
+                      }
+                    },
+                  ),
               ],
             ),
           ),
@@ -259,8 +279,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 28),
-                        _buildAccountCard(context, user, isVisitor),
                         const SizedBox(height: 28),
                         Text(
                           "MON ESPACE",
@@ -349,75 +367,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildAccountCard(BuildContext context, User? user, bool isVisitor) {
-    final textTheme = Theme.of(context).textTheme;
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(18),
-      decoration: _cardDecoration(),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            "Informations du compte",
-            style: textTheme.titleLarge?.copyWith(fontSize: 16),
-          ),
-          const SizedBox(height: 14),
-          _buildInfoLine(
-            context,
-            Icons.person_outline,
-            "Statut",
-            isVisitor ? "Invite" : _roleLabel(user?.role ?? "utilisateur"),
-          ),
-          const SizedBox(height: 12),
-          _buildInfoLine(
-            context,
-            Icons.badge_outlined,
-            "Nom",
-            user == null ? "Non connecte" : user.nom,
-          ),
-          const SizedBox(height: 12),
-          _buildInfoLine(
-            context,
-            Icons.account_circle_outlined,
-            "Prenom",
-            user == null ? "Non connecte" : user.prenom,
-          ),
-          const SizedBox(height: 12),
-          _buildInfoLine(
-            context,
-            Icons.wc_outlined,
-            "Sexe",
-            user?.sexe ?? "Non connecte",
-          ),
-          const SizedBox(height: 12),
-          _buildInfoLine(
-            context,
-            Icons.mail_outline,
-            "Email",
-            user?.email ?? "Non connecte",
-          ),
-          if (user != null) ...[
-            const SizedBox(height: 12),
-            _buildInfoLine(
-              context,
-              Icons.event_available_outlined,
-              "Inscription",
-              _formatDate(user.dateInscription),
-            ),
-            const SizedBox(height: 12),
-            _buildInfoLine(
-              context,
-              Icons.update_outlined,
-              "Mise a jour",
-              _formatDate(user.dateMaj),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
 
   Widget _buildSettingsTile(
     BuildContext context, {
@@ -442,36 +392,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildInfoLine(
-    BuildContext context,
-    IconData icon,
-    String label,
-    String value,
-  ) {
-    final textTheme = Theme.of(context).textTheme;
 
-    return Row(
-      children: [
-        Icon(icon, size: 20, color: AppColors.terracotta),
-        const SizedBox(width: 10),
-        Text(
-          "$label : ",
-          style: textTheme.bodyMedium?.copyWith(
-            color: AppColors.grisTexte,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        Expanded(
-          child: Text(
-            value,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: textTheme.bodyLarge?.copyWith(fontSize: 14),
-          ),
-        ),
-      ],
-    );
-  }
 
   Widget _buildStatCard(BuildContext context, String value, String label) {
     final textTheme = Theme.of(context).textTheme;
@@ -704,31 +625,4 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  String _formatDate(DateTime date) {
-    const months = [
-      "janvier",
-      "fevrier",
-      "mars",
-      "avril",
-      "mai",
-      "juin",
-      "juillet",
-      "aout",
-      "septembre",
-      "octobre",
-      "novembre",
-      "decembre",
-    ];
-    return "${date.day} ${months[date.month - 1]} ${date.year}";
-  }
-
-  String _roleLabel(String role) {
-    if (role == "admin") {
-      return "Administrateur";
-    }
-    if (role == "gerant") {
-      return "Gerant de restaurant";
-    }
-    return "Utilisateur inscrit";
-  }
 }

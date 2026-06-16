@@ -250,7 +250,7 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
             ],
           ),
         ),
-        // Bottom details overlay: transparent/slightly white transparent
+        // Bottom details overlay: transparent/slightly creme transparent to match page background
         Positioned(
           bottom: 0,
           left: 0,
@@ -262,11 +262,11 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 colors: [
-                  Colors.white.withValues(alpha: 0.0),
-                  Colors.white.withValues(alpha: 0.85),
-                  Colors.white,
+                  AppColors.creme.withValues(alpha: 0.0),
+                  AppColors.creme.withValues(alpha: 0.7),
+                  AppColors.creme,
                 ],
-                stops: const [0.0, 0.45, 1.0],
+                stops: const [0.0, 0.65, 1.0], // Ajusté pour garder la photo de couverture bien visible
               ),
             ),
             child: Row(

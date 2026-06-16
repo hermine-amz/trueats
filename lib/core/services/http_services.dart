@@ -368,17 +368,35 @@ class HttpAuthService implements AuthService {
   }
 
   @override
-  Future<void> setAccountActive(int userId, bool isActive) async {
+  Future<void> setAccountActive(int userId, bool isActive, {int? dureeJours}) async {
     try {
       // Laravel attend 'bloque' => boolean (true pour bloquer, false pour debloquer)
       await ApiClient.post('/admin/users/$userId/bloquer', {
         'bloque': !isActive,
+        if (dureeJours != null) 'duree_jours': dureeJours,
       });
       // Mettre a jour localement si c'est l'utilisateur en cours
       if (_currentUser?.id == userId) {
-        _currentUser = _currentUser!.copyWith(isActive: isActive);
+        final now = DateTime.now();
+        final dateSuspension = dureeJours != null ? now.add(Duration(days: dureeJours)) : null;
+        _currentUser = _currentUser!.copyWith(
+          isActive: isActive,
+          bloqueJusqua: dateSuspension,
+        );
         _authController.add(_currentUser);
       }
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  @override
+  Future<void> deleteAccount() async {
+    try {
+      await ApiClient.delete('/user/profile');
+      await ApiClient.setToken(null);
+      _currentUser = null;
+      _authController.add(null);
     } catch (e) {
       rethrow;
     }
@@ -659,21 +677,47 @@ class HttpRestaurantService implements RestaurantService {
     required int id,
     required String name,
     required String address,
+    String? quartier,
+    String? category,
+    String? typeCuisine,
+    double? latitude,
+    double? longitude,
+    int? superficie,
     String? logoUrl,
     String? photoUrl,
+    String? cipUrl,
+    String? ifuNumero,
+    String? ifuAttestationUrl,
+    bool? estArchive,
   }) async {
     try {
       final payload = <String, dynamic>{
         'nom': name,
         'adresse': address,
       };
-      if (logoUrl != null) {
-        payload['logo_url'] = logoUrl;
-      }
-      if (photoUrl != null) {
-        payload['photo_url'] = photoUrl;
-      }
+      if (quartier != null) payload['quartier'] = quartier;
+      if (category != null) payload['categorie'] = category;
+      if (typeCuisine != null) payload['type_cuisine'] = typeCuisine;
+      if (latitude != null) payload['latitude'] = latitude;
+      if (longitude != null) payload['longitude'] = longitude;
+      if (superficie != null) payload['superficie'] = superficie;
+      if (logoUrl != null) payload['logo_url'] = logoUrl;
+      if (photoUrl != null) payload['photo_url'] = photoUrl;
+      if (cipUrl != null) payload['cip_url'] = cipUrl;
+      if (ifuNumero != null) payload['ifu_numero'] = ifuNumero;
+      if (ifuAttestationUrl != null) payload['ifu_attestation_url'] = ifuAttestationUrl;
+      if (estArchive != null) payload['est_archive'] = estArchive;
+      
       await ApiClient.put('/restaurants/$id', payload);
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  @override
+  Future<void> deleteRestaurant(int id) async {
+    try {
+      await ApiClient.delete('/restaurants/$id');
     } catch (e) {
       rethrow;
     }

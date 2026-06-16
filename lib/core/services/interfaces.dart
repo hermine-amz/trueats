@@ -20,6 +20,7 @@ class User {
   final DateTime dateInscription;
   final DateTime dateMaj;
   final bool isActive;
+  final DateTime? bloqueJusqua;
 
   User({
     required this.id,
@@ -31,6 +32,7 @@ class User {
     required this.dateInscription,
     required this.dateMaj,
     this.isActive = true,
+    this.bloqueJusqua,
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
@@ -40,7 +42,9 @@ class User {
       roleMapped = 'utilisateur';
     }
 
-    final isActiveVal = json['compte_active'] == 1 || json['compte_active'] == true || (json['compte_active'] ?? true);
+    final DateTime? bloqueJusquaVal = json['bloque_jusqua'] != null ? DateTime.tryParse(json['bloque_jusqua']) : null;
+    final isBlockedByDate = bloqueJusquaVal != null && bloqueJusquaVal.isAfter(DateTime.now());
+    final isActiveVal = (json['compte_active'] == 1 || json['compte_active'] == true || (json['compte_active'] ?? true)) && !isBlockedByDate;
 
     return User(
       id: json['id'],
@@ -52,6 +56,7 @@ class User {
       dateInscription: json['created_at'] != null ? DateTime.parse(json['created_at']) : DateTime.now(),
       dateMaj: json['updated_at'] != null ? DateTime.parse(json['updated_at']) : DateTime.now(),
       isActive: isActiveVal,
+      bloqueJusqua: bloqueJusquaVal,
     );
   }
 
@@ -64,6 +69,7 @@ class User {
       'role': role == 'utilisateur' ? 'client' : role,
       'sexe': sexe,
       'compte_active': isActive,
+      'bloque_jusqua': bloqueJusqua?.toIso8601String(),
       'created_at': dateInscription.toIso8601String(),
       'updated_at': dateMaj.toIso8601String(),
     };
@@ -84,6 +90,7 @@ class User {
     DateTime? dateInscription,
     DateTime? dateMaj,
     bool? isActive,
+    DateTime? bloqueJusqua,
   }) {
     return User(
       id: id ?? this.id,
@@ -95,6 +102,7 @@ class User {
       dateInscription: dateInscription ?? this.dateInscription,
       dateMaj: dateMaj ?? this.dateMaj,
       isActive: isActive ?? this.isActive,
+      bloqueJusqua: bloqueJusqua ?? this.bloqueJusqua,
     );
   }
 }
@@ -120,7 +128,8 @@ abstract class AuthService {
     required String sexe,
   });
   Future<List<User>> getAllUsers();
-  Future<void> setAccountActive(int userId, bool isActive);
+  Future<void> setAccountActive(int userId, bool isActive, {int? dureeJours});
+  Future<void> deleteAccount();
   Future<void> refreshCurrentUser();
 
   // Utilitaire pour basculer de role lors du developpement
@@ -153,9 +162,20 @@ abstract class RestaurantService {
     required int id,
     required String name,
     required String address,
+    String? quartier,
+    String? category,
+    String? typeCuisine,
+    double? latitude,
+    double? longitude,
+    int? superficie,
     String? logoUrl,
     String? photoUrl,
+    String? cipUrl,
+    String? ifuNumero,
+    String? ifuAttestationUrl,
+    bool? estArchive,
   });
+  Future<void> deleteRestaurant(int id);
   Future<String> uploadImage(XFile file, {required String type});
   // Upload d'un document légal (PDF ou image)
   Future<String> uploadDocument(XFile file, {required String type});
@@ -197,6 +217,7 @@ abstract class ReviewService {
 abstract class LocationService {
   Future<bool> requestPermission();
   Future<bool> isPermissionGranted();
+  Future<bool> isPermissionDeniedForever();
 
   // Position GPS actuelle (lat/lon)
   Future<Map<String, double>> getCurrentLocation();

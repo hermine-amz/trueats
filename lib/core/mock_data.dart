@@ -221,6 +221,9 @@ class Restaurant {
   final String? ifuAttestationUrl;
   final String? rccmNumero;
   final String? rccmExtraitUrl;
+  // Motif de rejet de validation (null si non rejeté)
+  final String? motifRejet;
+  final bool estArchive;
 
   const Restaurant({
     required this.id,
@@ -245,6 +248,8 @@ class Restaurant {
     this.ifuAttestationUrl,
     this.rccmNumero,
     this.rccmExtraitUrl,
+    this.motifRejet,
+    this.estArchive = false,
   });
 
   factory Restaurant.fromJson(Map<String, dynamic> json) {
@@ -278,6 +283,8 @@ class Restaurant {
       ifuAttestationUrl: json['ifu_attestation_url'],
       rccmNumero: json['rccm_numero'],
       rccmExtraitUrl: json['rccm_extrait_url'],
+      motifRejet: json['motif_rejet'],
+      estArchive: json['est_archive'] == 1 || json['est_archive'] == true,
     );
   }
 
@@ -297,6 +304,7 @@ class Restaurant {
       'gerant_id': gerantId,
       'superficie': superficie,
       'rayon_validation': rayonMetres,
+      'est_archive': estArchive,
     };
   }
 
@@ -323,6 +331,8 @@ class Restaurant {
     String? ifuAttestationUrl,
     String? rccmNumero,
     String? rccmExtraitUrl,
+    String? motifRejet,
+    bool? estArchive,
   }) {
     return Restaurant(
       id: id ?? this.id,
@@ -347,6 +357,8 @@ class Restaurant {
       ifuAttestationUrl: ifuAttestationUrl ?? this.ifuAttestationUrl,
       rccmNumero: rccmNumero ?? this.rccmNumero,
       rccmExtraitUrl: rccmExtraitUrl ?? this.rccmExtraitUrl,
+      motifRejet: motifRejet ?? this.motifRejet,
+      estArchive: estArchive ?? this.estArchive,
     );
   }
 }
@@ -369,6 +381,8 @@ class DemandeRestaurant {
   final String? rccmNumero;
   final String? rccmExtraitUrl;
   final Map<String, dynamic>? gerant;
+  final bool estValide;
+  final String? motifRejet;
 
   const DemandeRestaurant({
     required this.id,
@@ -387,6 +401,8 @@ class DemandeRestaurant {
     this.rccmNumero,
     this.rccmExtraitUrl,
     this.gerant,
+    this.estValide = false,
+    this.motifRejet,
   });
 
   factory DemandeRestaurant.fromJson(Map<String, dynamic> json) {
@@ -407,6 +423,8 @@ class DemandeRestaurant {
       rccmNumero: json['rccm_numero'],
       rccmExtraitUrl: json['rccm_extrait_url'],
       gerant: json['gerant'] as Map<String, dynamic>?,
+      estValide: json['est_valide'] == 1 || json['est_valide'] == true || (json['est_valide'] ?? false),
+      motifRejet: json['motif_rejet'],
     );
   }
 }
@@ -460,6 +478,8 @@ class Signalement {
   final String auteurSignalement;
   final String raison;
   final DateTime dateSignalement;
+  final bool estTraite;
+  final String? decision;
 
   const Signalement({
     required this.id,
@@ -468,6 +488,8 @@ class Signalement {
     required this.auteurSignalement,
     required this.raison,
     required this.dateSignalement,
+    this.estTraite = false,
+    this.decision,
   });
 
   factory Signalement.fromJson(Map<String, dynamic> json) {
@@ -501,6 +523,8 @@ class Signalement {
       auteurSignalement: authorName,
       raison: json['libelle'] ?? 'Contenu inopportun',
       dateSignalement: json['created_at'] != null ? DateTime.parse(json['created_at']) : DateTime.now(),
+      estTraite: json['est_traite'] == 1 || json['est_traite'] == true || (json['est_traite'] ?? false),
+      decision: json['decision'],
     );
   }
 
