@@ -843,6 +843,7 @@ class QrImageWidget extends StatelessWidget {
     return QrImageView(
       data: data.isEmpty ? 'trueats_placeholder' : data,
       version: QrVersions.auto,
+      errorCorrectionLevel: QrErrorCorrectLevel.H,
       size: 200.0,
       backgroundColor: Colors.white,
       eyeStyle: const QrEyeStyle(
