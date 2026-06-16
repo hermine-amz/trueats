@@ -254,7 +254,17 @@ class MockRestaurantService implements RestaurantService {
   Future<Restaurant?> getRestaurantByQrCode(String code) async {
     await Future.delayed(const Duration(milliseconds: 300));
     try {
-      return _restaurants.firstWhere((restaurant) => restaurant.qrCode == code);
+      String finalCode = code.trim();
+      if (finalCode.contains('/scan/')) {
+        finalCode = finalCode.substring(finalCode.indexOf('/scan/') + 6);
+        if (finalCode.contains('?')) {
+          finalCode = finalCode.split('?').first;
+        }
+        if (finalCode.endsWith('/')) {
+          finalCode = finalCode.substring(0, finalCode.length - 1);
+        }
+      }
+      return _restaurants.firstWhere((restaurant) => restaurant.qrCode == finalCode);
     } catch (_) {
       return null;
     }

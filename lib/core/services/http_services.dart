@@ -479,7 +479,17 @@ class HttpRestaurantService implements RestaurantService {
   @override
   Future<Restaurant?> getRestaurantByQrCode(String code) async {
     try {
-      final data = await ApiClient.get('/restaurants/qr/$code');
+      String finalCode = code.trim();
+      if (finalCode.contains('/scan/')) {
+        finalCode = finalCode.substring(finalCode.indexOf('/scan/') + 6);
+        if (finalCode.contains('?')) {
+          finalCode = finalCode.split('?').first;
+        }
+        if (finalCode.endsWith('/')) {
+          finalCode = finalCode.substring(0, finalCode.length - 1);
+        }
+      }
+      final data = await ApiClient.get('/restaurants/qr/$finalCode');
       if (data != null) {
         return Restaurant.fromJson(data);
       }
