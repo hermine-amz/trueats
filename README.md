@@ -1,14 +1,15 @@
 # TruEats - Plateforme d'Avis Fiables pour Restaurants
 
-TruEats est une application mobile moderne et sécurisée conçue pour faciliter l'interaction entre les clients et les restaurants. L'application permet aux clients de scanner le code QR d'une table pour accéder instantanément au menu et soumettre des avis certifiés grâce à une double-validation géographique par GPS. Elle intègre également un espace gérant complet pour l'administration des établissements et une console d'administration pour la modération globale.
+TruEats est une application mobile moderne et sécurisée conçue pour faciliter l'interaction entre les clients et les restaurants. L'application permet aux clients de scanner le code QR d'une table pour accéder instantanément au menu et soumettre des avis certifiés grâce à une double-validation géographique par GPS. Elle intègre également une recherche de restaurant par budget, un espace gérant complet pour l'administration des établissements et une console d'administration pour la modération globale.
 
 ---
 
 ## 🚀 Fonctionnalités Clés
 
 * **Scannage de Code QR :** Accès instantané à la carte du restaurant et de la table correspondante.
-* **Avis Clients Certifiés par GPS :** Limitation géographique (distance max. configurable) pour s'assurer que seuls les clients physiquement présents dans l'établissement peuvent soumettre une note et un commentaire.
-* **Espace Gérant Dynamique :** Inscription de restaurant, édition rapide des informations, horaires d'ouverture hebdomadaires détaillés.
+* **Avis Clients Certifiés par GPS :** Limitation géographique (distance max. configurable grâce à la formule d'Haversine) pour s'assurer que seuls les clients physiquement présents dans l'établissement peuvent soumettre une note et un commentaire.
+* **Recherche de restaurant par budget :** Recherche facile pour trouver des restaurants selon le budget ainsi que la ville.
+* **Espace Gérant Dynamique :** Inscription de restaurant par demande, édition rapide des informations, horaires d'ouverture hebdomadaires détaillés.
 * **Console d'Administration Globale :** Validation/rejet des inscriptions de restaurants (avec motif en cas de rejet), modération des avis signalés, et activation/suspension des comptes gérants/clients.
 * **Base de Localisation du Bénin :** Intégration complète de la base de données administrative officielle du Bénin (77 communes et plus de 5 300 quartiers et arrondissements).
 
