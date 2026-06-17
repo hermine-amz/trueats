@@ -8,6 +8,15 @@ import '../../core/services/interfaces.dart';
 import '../../core/services/service_locator.dart';
 import '../../core/theme.dart';
 import '../../core/widgets/app_feedback.dart';
+import '../../core/benin_locations.dart';
+
+class DayHours {
+  bool isOpen;
+  String openTime;
+  String closeTime;
+
+  DayHours({this.isOpen = true, this.openTime = '08h00', this.closeTime = '22h00'});
+}
 
 class RegisterRestaurantScreen extends StatefulWidget {
   final Restaurant? restaurantToEdit;
@@ -25,7 +34,7 @@ class _RegisterRestaurantScreenState extends State<RegisterRestaurantScreen> {
   final _telephoneController = TextEditingController();
   final _horairesController = TextEditingController();
   final _quartierController = TextEditingController();
-  final _categoryController = TextEditingController();
+  String _selectedRestaurantCategory = 'Maquis';
   final _typeCuisineController = TextEditingController();
   final _latitudeController = TextEditingController();
   final _longitudeController = TextEditingController();
@@ -42,17 +51,98 @@ class _RegisterRestaurantScreenState extends State<RegisterRestaurantScreen> {
   bool _isSubmitting = false;
   bool _isDetectingGps = false;
 
+  late String _selectedVille;
+  late String _selectedQuartier;
+  late List<String> _currentQuartiers;
+
+  late Map<String, DayHours> _daysHours;
+  final List<String> _timeOptions = [
+    '00h00', '00h30', '01h00', '01h30', '02h00', '02h30', '03h00', '03h30',
+    '04h00', '04h30', '05h00', '05h30', '06h00', '06h30', '07h00', '07h30',
+    '08h00', '08h30', '09h00', '09h30', '10h00', '10h30', '11h00', '11h30',
+    '12h00', '12h30', '13h00', '13h30', '14h00', '14h30', '15h00', '15h30',
+    '16h00', '16h30', '17h00', '17h30', '18h00', '18h30', '19h00', '19h30',
+    '20h00', '20h30', '21h00', '21h30', '22h00', '22h30', '23h00', '23h30'
+  ];
+
+  void _parseQuartierAndVille(String dbQuartier) {
+    if (dbQuartier.contains(',')) {
+      final parts = dbQuartier.split(',');
+      final qPart = parts[0].trim();
+      final vPart = parts[1].trim();
+      if (beninLocations.containsKey(vPart)) {
+        _selectedVille = vPart;
+        _currentQuartiers = List.from(beninLocations[_selectedVille]!);
+        _selectedQuartier = qPart;
+        if (!_currentQuartiers.contains(_selectedQuartier)) {
+          _currentQuartiers.add(_selectedQuartier);
+        }
+        return;
+      }
+    }
+    
+    for (final city in beninLocations.keys) {
+      if (dbQuartier.toLowerCase().contains(city.toLowerCase())) {
+        _selectedVille = city;
+        _currentQuartiers = List.from(beninLocations[_selectedVille]!);
+        final cleanQ = dbQuartier.replaceAll(RegExp(city, caseSensitive: false), '').replaceAll(RegExp(r'[^\w\s\-]'), '').trim();
+        _selectedQuartier = cleanQ.isNotEmpty ? cleanQ : _currentQuartiers.first;
+        if (!_currentQuartiers.contains(_selectedQuartier)) {
+          _currentQuartiers.add(_selectedQuartier);
+        }
+        return;
+      }
+    }
+
+    _selectedVille = 'Cotonou';
+    _currentQuartiers = List.from(beninLocations[_selectedVille]!);
+    if (dbQuartier.isNotEmpty) {
+      _selectedQuartier = dbQuartier;
+      if (!_currentQuartiers.contains(_selectedQuartier)) {
+        _currentQuartiers.add(_selectedQuartier);
+      }
+    } else {
+      _selectedQuartier = _currentQuartiers.first;
+    }
+  }
+
   @override
   void initState() {
     super.initState();
+    _daysHours = {
+      'Lundi': DayHours(openTime: '08h00', closeTime: '22h00', isOpen: true),
+      'Mardi': DayHours(openTime: '08h00', closeTime: '22h00', isOpen: true),
+      'Mercredi': DayHours(openTime: '08h00', closeTime: '22h00', isOpen: true),
+      'Jeudi': DayHours(openTime: '08h00', closeTime: '22h00', isOpen: true),
+      'Vendredi': DayHours(openTime: '08h00', closeTime: '22h00', isOpen: true),
+      'Samedi': DayHours(openTime: '08h00', closeTime: '22h00', isOpen: true),
+      'Dimanche': DayHours(openTime: '08h00', closeTime: '22h00', isOpen: true),
+    };
+    _updateHorairesController();
+
+    _selectedVille = 'Cotonou';
+    _currentQuartiers = List.from(beninLocations[_selectedVille]!);
+    _selectedQuartier = _currentQuartiers.contains('Haie Vive') ? 'Haie Vive' : _currentQuartiers.first;
+
     if (widget.restaurantToEdit != null) {
       final r = widget.restaurantToEdit!;
       _nameController.text = r.nom;
       _addressController.text = r.adresse;
-      _telephoneController.text = r.telephone ?? '';
-      _horairesController.text = r.horaires ?? '';
-      _quartierController.text = r.quartier;
-      _categoryController.text = r.categorie;
+      String initialPhone = r.telephone ?? '';
+      if (initialPhone.startsWith("+229")) {
+        initialPhone = initialPhone.substring(4).trim();
+      }
+      _telephoneController.text = initialPhone;
+      
+      _daysHours = _parseHoraires(r.horaires);
+      _updateHorairesController();
+      
+      final dbQuartier = r.quartier;
+      _parseQuartierAndVille(dbQuartier);
+      _quartierController.text = dbQuartier.isNotEmpty ? dbQuartier : '$_selectedQuartier, $_selectedVille';
+      _selectedRestaurantCategory = kRestaurantCategories.contains(r.categorie)
+          ? r.categorie
+          : kRestaurantCategories.first;
       _typeCuisineController.text = r.typeCuisine;
       _latitudeController.text = r.latitude.toString();
       _longitudeController.text = r.longitude.toString();
@@ -252,7 +342,6 @@ class _RegisterRestaurantScreenState extends State<RegisterRestaurantScreen> {
     _telephoneController.dispose();
     _horairesController.dispose();
     _quartierController.dispose();
-    _categoryController.dispose();
     _typeCuisineController.dispose();
     _latitudeController.dispose();
     _longitudeController.dispose();
@@ -435,18 +524,19 @@ class _RegisterRestaurantScreenState extends State<RegisterRestaurantScreen> {
       return;
     }
 
+    final tel = _telephoneController.text.trim().replaceAll(' ', '');
+    final telephoneComplet = tel.isNotEmpty ? '+229$tel' : null;
+
     if (widget.restaurantToEdit != null) {
       try {
         await ServiceLocator.restaurantService.updateRestaurant(
           id: widget.restaurantToEdit!.id,
           name: _nameController.text.trim(),
           address: _addressController.text.trim(),
-          telephone: _telephoneController.text.trim().isEmpty ? null : _telephoneController.text.trim(),
+          telephone: telephoneComplet,
           horaires: _horairesController.text.trim().isEmpty ? null : _horairesController.text.trim(),
           quartier: _quartierController.text.trim(),
-          category: _categoryController.text.trim().isEmpty
-              ? 'Restaurant'
-              : _categoryController.text.trim(),
+          category: _selectedRestaurantCategory,
           typeCuisine: _typeCuisineController.text.trim().isEmpty
               ? 'Local'
               : _typeCuisineController.text.trim(),
@@ -488,12 +578,10 @@ class _RegisterRestaurantScreenState extends State<RegisterRestaurantScreen> {
       id: 0,
       nom: _nameController.text.trim(),
       adresse: _addressController.text.trim(),
-      telephone: _telephoneController.text.trim().isEmpty ? null : _telephoneController.text.trim(),
+      telephone: telephoneComplet,
       horaires: _horairesController.text.trim().isEmpty ? null : _horairesController.text.trim(),
       quartier: _quartierController.text.trim(),
-      categorie: _categoryController.text.trim().isEmpty
-          ? 'Restaurant'
-          : _categoryController.text.trim(),
+      categorie: _selectedRestaurantCategory,
       typeCuisine: _typeCuisineController.text.trim().isEmpty
           ? 'Local'
           : _typeCuisineController.text.trim(),
@@ -610,28 +698,141 @@ class _RegisterRestaurantScreenState extends State<RegisterRestaurantScreen> {
                   },
                 ),
                 const SizedBox(height: 16),
-                _buildTextField(
+                TextFormField(
                   controller: _telephoneController,
-                  label: "Téléphone",
-                  hintText: "Ex: +229 21 30 40 50",
                   keyboardType: TextInputType.phone,
+                  decoration: const InputDecoration(
+                    labelText: "Téléphone",
+                    hintText: "01 XX XX XX XX",
+                    prefixIcon: Icon(Icons.phone_outlined),
+                    prefixText: "+229  ",
+                    prefixStyle: TextStyle(
+                      color: AppColors.terracotta,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 15,
+                    ),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return null;
+                    }
+                    final cleaned = value.replaceAll(' ', '');
+                    if (!RegExp(r'^01[0-9]{8}$').hasMatch(cleaned)) {
+                      return "Format invalide — ex: 0197123456";
+                    }
+                    return null;
+                  },
                 ),
                 const SizedBox(height: 16),
-                _buildTextField(
-                  controller: _horairesController,
-                  label: "Horaires d'ouverture",
-                  hintText: "Ex: Lundi - Dimanche : 11h00 - 23h00",
+                _buildHoursSelectionSection(context),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: DropdownButtonFormField<String>(
+                        initialValue: _selectedVille,
+                        items: beninLocations.keys.map((ville) {
+                          return DropdownMenuItem<String>(
+                            value: ville,
+                            child: Text(ville, style: const TextStyle(fontSize: 13)),
+                          );
+                        }).toList(),
+                        onChanged: (val) {
+                          if (val != null) {
+                            setState(() {
+                              _selectedVille = val;
+                              _currentQuartiers = List.from(beninLocations[_selectedVille]!);
+                              _selectedQuartier = _currentQuartiers.first;
+                              _quartierController.text = '$_selectedQuartier, $_selectedVille';
+                            });
+                          }
+                        },
+                        decoration: InputDecoration(
+                          labelText: 'Ville',
+                          filled: true,
+                          fillColor: Colors.white,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide: const BorderSide(color: AppColors.grisBordure),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide: const BorderSide(color: AppColors.grisBordure),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: DropdownButtonFormField<String>(
+                        key: ValueKey(_selectedVille),
+                        initialValue: _selectedQuartier,
+                        items: _currentQuartiers.map((quartier) {
+                          return DropdownMenuItem<String>(
+                            value: quartier,
+                            child: Text(quartier, style: const TextStyle(fontSize: 13)),
+                          );
+                        }).toList(),
+                        onChanged: (val) {
+                          if (val != null) {
+                            setState(() {
+                              _selectedQuartier = val;
+                              _quartierController.text = '$_selectedQuartier, $_selectedVille';
+                            });
+                          }
+                        },
+                        decoration: InputDecoration(
+                          labelText: 'Quartier',
+                          filled: true,
+                          fillColor: Colors.white,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide: const BorderSide(color: AppColors.grisBordure),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide: const BorderSide(color: AppColors.grisBordure),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 16),
-                _buildTextField(
-                  controller: _quartierController,
-                  label: 'Quartier',
-                ),
-                const SizedBox(height: 16),
-                _buildTextField(
-                  controller: _categoryController,
-                  label: 'Categorie',
-                  hintText: 'Maquis, Café, Restaurant...',
+                StatefulBuilder(
+                  builder: (context, setDropState) {
+                    return DropdownButtonFormField<String>(
+                      value: _selectedRestaurantCategory,
+                      decoration: InputDecoration(
+                        labelText: 'Catégorie',
+                        filled: true,
+                        fillColor: Colors.white,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: const BorderSide(color: AppColors.grisBordure),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: const BorderSide(color: AppColors.grisBordure),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: const BorderSide(color: AppColors.terracotta, width: 2),
+                        ),
+                      ),
+                      items: kRestaurantCategories.map((cat) {
+                        return DropdownMenuItem<String>(
+                          value: cat,
+                          child: Text(cat),
+                        );
+                      }).toList(),
+                      onChanged: _isSubmitting ? null : (val) {
+                        if (val != null) {
+                          setState(() => _selectedRestaurantCategory = val);
+                        }
+                      },
+                    );
+                  },
                 ),
                 const SizedBox(height: 16),
                 _buildTextField(
@@ -878,5 +1079,219 @@ class _RegisterRestaurantScreenState extends State<RegisterRestaurantScreen> {
         ),
       ),
     );
+  }
+
+  Widget _buildHoursSelectionSection(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          "Horaires d'ouverture par jour",
+          style: textTheme.bodyMedium?.copyWith(
+            fontWeight: FontWeight.bold,
+            color: AppColors.marronFonce,
+          ),
+        ),
+        const SizedBox(height: 12),
+        ..._daysHours.entries.map((entry) {
+          final day = entry.key;
+          final dh = entry.value;
+
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 12.0),
+            child: Row(
+              children: [
+                SizedBox(
+                  width: 85,
+                  child: Text(
+                    day,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.marronFonce,
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+                Switch(
+                  value: dh.isOpen,
+                  activeThumbColor: AppColors.terracotta,
+                  onChanged: (val) {
+                    setState(() {
+                      dh.isOpen = val;
+                      _updateHorairesController();
+                    });
+                  },
+                ),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: dh.isOpen
+                      ? Row(
+                          children: [
+                            Expanded(
+                              child: SizedBox(
+                                height: 40,
+                                child: DropdownButtonFormField<String>(
+                                  initialValue: dh.openTime,
+                                  items: _timeOptions.map((time) {
+                                    return DropdownMenuItem<String>(
+                                      value: time,
+                                      child: Text(time, style: const TextStyle(fontSize: 11)),
+                                    );
+                                  }).toList(),
+                                  onChanged: (val) {
+                                    if (val != null) {
+                                      setState(() {
+                                        dh.openTime = val;
+                                        _updateHorairesController();
+                                      });
+                                    }
+                                  },
+                                  decoration: InputDecoration(
+                                    contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+                                    labelText: 'Ouv',
+                                    labelStyle: const TextStyle(fontSize: 9),
+                                    filled: true,
+                                    fillColor: Colors.white,
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                      borderSide: const BorderSide(color: AppColors.grisBordure),
+                                    ),
+                                    enabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                      borderSide: const BorderSide(color: AppColors.grisBordure),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 4.0),
+                              child: Text('à', style: TextStyle(fontSize: 11)),
+                            ),
+                            Expanded(
+                              child: SizedBox(
+                                height: 40,
+                                child: DropdownButtonFormField<String>(
+                                  initialValue: dh.closeTime,
+                                  items: _timeOptions.map((time) {
+                                    return DropdownMenuItem<String>(
+                                      value: time,
+                                      child: Text(time, style: const TextStyle(fontSize: 11)),
+                                    );
+                                  }).toList(),
+                                  onChanged: (val) {
+                                    if (val != null) {
+                                      setState(() {
+                                        dh.closeTime = val;
+                                        _updateHorairesController();
+                                      });
+                                    }
+                                  },
+                                  decoration: InputDecoration(
+                                    contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+                                    labelText: 'Ferm',
+                                    labelStyle: const TextStyle(fontSize: 9),
+                                    filled: true,
+                                    fillColor: Colors.white,
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                      borderSide: const BorderSide(color: AppColors.grisBordure),
+                                    ),
+                                    enabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                      borderSide: const BorderSide(color: AppColors.grisBordure),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        )
+                      : const Text(
+                          'Fermé',
+                          style: TextStyle(
+                            color: AppColors.rougeSignalement,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 11,
+                          ),
+                        ),
+                ),
+              ],
+            ),
+          );
+        }),
+      ],
+    );
+  }
+
+  void _updateHorairesController() {
+    _horairesController.text = _formatHoraires(_daysHours);
+  }
+
+  String _formatHoraires(Map<String, DayHours> daysHours) {
+    final List<String> parts = [];
+    daysHours.forEach((day, dh) {
+      if (dh.isOpen) {
+        parts.add('$day : ${dh.openTime} - ${dh.closeTime}');
+      } else {
+        parts.add('$day : Fermé');
+      }
+    });
+    return parts.join('\n');
+  }
+
+  Map<String, DayHours> _parseHoraires(String? horairesStr) {
+    final Map<String, DayHours> result = {
+      'Lundi': DayHours(openTime: '08h00', closeTime: '22h00', isOpen: true),
+      'Mardi': DayHours(openTime: '08h00', closeTime: '22h00', isOpen: true),
+      'Mercredi': DayHours(openTime: '08h00', closeTime: '22h00', isOpen: true),
+      'Jeudi': DayHours(openTime: '08h00', closeTime: '22h00', isOpen: true),
+      'Vendredi': DayHours(openTime: '08h00', closeTime: '22h00', isOpen: true),
+      'Samedi': DayHours(openTime: '08h00', closeTime: '22h00', isOpen: true),
+      'Dimanche': DayHours(openTime: '08h00', closeTime: '22h00', isOpen: true),
+    };
+
+    if (horairesStr == null || horairesStr.trim().isEmpty) {
+      return result;
+    }
+
+    if (!horairesStr.contains('Lundi') && !horairesStr.contains('Mardi') && horairesStr.contains('-')) {
+      final parts = horairesStr.split('-');
+      if (parts.length == 2) {
+        final start = parts[0].trim();
+        final end = parts[1].trim();
+        if (_timeOptions.contains(start) && _timeOptions.contains(end)) {
+          for (final day in result.keys) {
+            result[day] = DayHours(openTime: start, closeTime: end, isOpen: true);
+          }
+        }
+      }
+      return result;
+    }
+
+    final lines = horairesStr.split(RegExp(r'[\n,|]'));
+    for (final line in lines) {
+      final trimmedLine = line.trim();
+      for (final day in result.keys) {
+        if (trimmedLine.toLowerCase().startsWith(day.toLowerCase())) {
+          if (trimmedLine.toLowerCase().contains('fermé') || trimmedLine.toLowerCase().contains('ferme')) {
+            result[day] = DayHours(openTime: '08h00', closeTime: '22h00', isOpen: false);
+          } else if (trimmedLine.contains('-')) {
+            final timePart = trimmedLine.split(':').skip(1).join(':').trim();
+            final times = timePart.split('-');
+            if (times.length == 2) {
+              final start = times[0].trim();
+              final end = times[1].trim();
+              if (_timeOptions.contains(start) && _timeOptions.contains(end)) {
+                result[day] = DayHours(openTime: start, closeTime: end, isOpen: true);
+              }
+            }
+          }
+        }
+      }
+    }
+
+    return result;
   }
 }

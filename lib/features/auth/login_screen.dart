@@ -247,7 +247,9 @@ class _LoginScreenState extends State<LoginScreen> {
                               spacing: 8,
                               runSpacing: 8,
                               children: [
-                                _buildQuickLoginButton("Client", "client@trueats.com"),
+                                _buildQuickLoginButton("Client (Sophie)", "client@trueats.com"),
+                                _buildQuickLoginButton("Client (Marc)", "client2@trueats.com"),
+                                _buildQuickLoginButton("Client (Afi)", "client3@trueats.com"),
                                 _buildQuickLoginButton("Tanti (Gérant)", "tanti@trueats.com"),
                                 _buildQuickLoginButton("Bissap (Gérant)", "bissap@trueats.com"),
                                 _buildQuickLoginButton("Admin", "admin@trueats.com"),

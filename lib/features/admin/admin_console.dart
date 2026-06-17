@@ -19,6 +19,7 @@ class _AdminConsoleState extends State<AdminConsole> {
   List<User> _users = [];
   List<DemandeRestaurant> _demandes = [];
   bool _isLoading = true;
+  bool _hasError = false;
 
   @override
   void initState() {
@@ -27,20 +28,34 @@ class _AdminConsoleState extends State<AdminConsole> {
   }
 
   Future<void> _loadAdminData() async {
-    final signalements = await ServiceLocator.reviewService.getSignalements();
-    final users = await ServiceLocator.authService.getAllUsers();
-    final demandes = await ServiceLocator.adminService.getDemandes();
-
-    if (!mounted) {
-      return;
-    }
-
     setState(() {
-      _signalements = signalements;
-      _users = users;
-      _demandes = demandes;
-      _isLoading = false;
+      _isLoading = true;
+      _hasError = false;
     });
+
+    try {
+      // Chargement parallèle des 3 sources — 3x plus rapide que séquentiel
+      final results = await Future.wait([
+        ServiceLocator.reviewService.getSignalements(),
+        ServiceLocator.authService.getAllUsers(),
+        ServiceLocator.adminService.getDemandes(),
+      ]);
+
+      if (!mounted) return;
+
+      setState(() {
+        _signalements = results[0] as List<Signalement>;
+        _users        = results[1] as List<User>;
+        _demandes     = results[2] as List<DemandeRestaurant>;
+        _isLoading    = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _hasError  = true;
+      });
+    }
   }
 
   Future<void> _resolveSignalement(int signalementId, bool keepReview) async {
@@ -126,6 +141,7 @@ class _AdminConsoleState extends State<AdminConsole> {
             child: isImage
                 ? Image.network(
                     fullUrl,
+                    headers: const {'ngrok-skip-browser-warning': 'true'},
                     loadingBuilder: (context, child, progress) {
                       if (progress == null) return child;
                       return const Center(child: CircularProgressIndicator());
@@ -397,51 +413,92 @@ class _AdminConsoleState extends State<AdminConsole> {
 
     return Scaffold(
       backgroundColor: AppColors.creme,
+      // AppBar toujours visible — l'utilisateur peut toujours revenir en arrière
+      appBar: AppBar(
+        backgroundColor: AppColors.creme,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: AppColors.marronFonce),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              "CONSOLE ADMIN",
+              style: textTheme.labelLarge?.copyWith(
+                color: AppColors.grisTexte,
+                fontSize: 10,
+                letterSpacing: 2,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            Text(
+              "Supervision",
+              style: textTheme.titleLarge?.copyWith(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh_rounded, color: AppColors.terracotta),
+            tooltip: 'Actualiser',
+            onPressed: _isLoading ? null : _loadAdminData,
+          ),
+        ],
+      ),
       body: SafeArea(
         child: _isLoading
-            ? const Center(child: CircularProgressIndicator())
-            : RefreshIndicator(
-                onRefresh: _loadAdminData,
-                child: SingleChildScrollView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
-                    vertical: 16,
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
+            ? const Center(child: CircularProgressIndicator(color: AppColors.terracotta))
+            : _hasError
+                ? Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(32),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          IconButton(
-                            icon: const Icon(Icons.arrow_back, color: AppColors.marronFonce),
-                            onPressed: () => Navigator.of(context).pop(),
+                          const Icon(Icons.wifi_off_rounded, size: 64, color: AppColors.grisTexte),
+                          const SizedBox(height: 16),
+                          Text(
+                            'Impossible de charger les données',
+                            style: textTheme.titleLarge?.copyWith(fontSize: 18),
+                            textAlign: TextAlign.center,
                           ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  "CONSOLE ADMIN",
-                                  style: textTheme.labelLarge?.copyWith(
-                                    color: AppColors.grisTexte,
-                                    fontSize: 11,
-                                    letterSpacing: 2,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  "Supervision",
-                                  style: textTheme.displayLarge?.copyWith(fontSize: 28),
-                                ),
-                              ],
+                          const SizedBox(height: 8),
+                          Text(
+                            'Vérifiez votre connexion et réessayez.',
+                            style: textTheme.bodyMedium?.copyWith(color: AppColors.grisTexte),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 24),
+                          ElevatedButton.icon(
+                            onPressed: _loadAdminData,
+                            icon: const Icon(Icons.refresh),
+                            label: const Text('Réessayer'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.terracotta,
+                              foregroundColor: Colors.white,
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 22),
+                    ),
+                  )
+                : RefreshIndicator(
+                    onRefresh: _loadAdminData,
+                    child: SingleChildScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 16,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const SizedBox(height: 8),
                       Row(
                         children: [
                           _buildAdminKpiCard(

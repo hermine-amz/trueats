@@ -52,6 +52,7 @@ class ApiClient {
     final headers = {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
+      'ngrok-skip-browser-warning': 'true',
     };
     if (_token != null) {
       headers['Authorization'] = 'Bearer $_token';
@@ -175,6 +176,7 @@ class ApiClient {
         Uri.parse('$baseUrl$endpoint'),
       );
       request.headers['Accept'] = 'application/json';
+      request.headers['ngrok-skip-browser-warning'] = 'true';
       if (_token != null) {
         request.headers['Authorization'] = 'Bearer $_token';
       }
@@ -339,14 +341,30 @@ class HttpAuthService implements AuthService {
     required String prenom,
     required String email,
     required String sexe,
+    String? telephone,
+    String? password,
+    String? passwordConfirmation,
+    String? currentPassword,
   }) async {
     try {
-      final response = await ApiClient.put('/user/profile', {
+      final payload = <String, dynamic>{
         'nom': nom.trim(),
         'prenom': prenom.trim(),
         'email': email.trim(),
         'sexe': sexe,
-      });
+      };
+      if (telephone != null) {
+        payload['telephone'] = telephone.trim();
+      }
+      if (password != null && password.isNotEmpty) {
+        payload['password'] = password;
+        payload['password_confirmation'] = passwordConfirmation;
+      }
+      if (currentPassword != null && currentPassword.isNotEmpty) {
+        payload['current_password'] = currentPassword;
+      }
+
+      final response = await ApiClient.put('/user/profile', payload);
 
       if (response != null && response['user'] != null) {
         _currentUser = User.fromJson(response['user']);

@@ -79,6 +79,31 @@ class ImageUrlHelper {
         width: width,
         height: height,
         fit: fit,
+        // Mise en cache dimensionnelle pour réduire la mémoire sur mobile
+        cacheWidth: width != null ? (width * 2).toInt() : null,
+        cacheHeight: height != null ? (height * 2).toInt() : null,
+        filterQuality: FilterQuality.medium,
+        headers: const {'ngrok-skip-browser-warning': 'true'},
+        // Affiche le placeholder pendant le téléchargement (évite l'écran blanc)
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) return child;
+          return placeholder ??
+              Container(
+                width: width,
+                height: height,
+                color: const Color(0xFFEDE8E3),
+                child: const Center(
+                  child: SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Color(0xFFC4704A),
+                    ),
+                  ),
+                ),
+              );
+        },
         errorBuilder: (_, __, ___) => placeholder ?? const Icon(Icons.broken_image),
       );
     } else {
@@ -90,6 +115,8 @@ class ImageUrlHelper {
         width: width,
         height: height,
         fit: fit,
+        cacheWidth: width != null ? (width * 2).toInt() : null,
+        cacheHeight: height != null ? (height * 2).toInt() : null,
         errorBuilder: (_, __, ___) => placeholder ?? const Icon(Icons.broken_image),
       );
     }

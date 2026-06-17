@@ -633,6 +633,14 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        if (_restaurant.quartier.isNotEmpty) ...[
+          _buildInfoRow(
+            Icons.location_city_outlined,
+            "Localisation",
+            _restaurant.quartier,
+          ),
+          const SizedBox(height: 16),
+        ],
         _buildInfoRow(
           Icons.location_on_outlined,
           "Itinéraire",

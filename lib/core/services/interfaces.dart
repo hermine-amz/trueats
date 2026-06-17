@@ -21,6 +21,7 @@ class User {
   final DateTime dateMaj;
   final bool isActive;
   final DateTime? bloqueJusqua;
+  final String? telephone;
 
   User({
     required this.id,
@@ -33,6 +34,7 @@ class User {
     required this.dateMaj,
     this.isActive = true,
     this.bloqueJusqua,
+    this.telephone,
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
@@ -57,6 +59,7 @@ class User {
       dateMaj: json['updated_at'] != null ? DateTime.parse(json['updated_at']) : DateTime.now(),
       isActive: isActiveVal,
       bloqueJusqua: bloqueJusquaVal,
+      telephone: json['telephone'],
     );
   }
 
@@ -72,6 +75,7 @@ class User {
       'bloque_jusqua': bloqueJusqua?.toIso8601String(),
       'created_at': dateInscription.toIso8601String(),
       'updated_at': dateMaj.toIso8601String(),
+      'telephone': telephone,
     };
   }
 
@@ -91,6 +95,7 @@ class User {
     DateTime? dateMaj,
     bool? isActive,
     DateTime? bloqueJusqua,
+    String? telephone,
   }) {
     return User(
       id: id ?? this.id,
@@ -103,6 +108,7 @@ class User {
       dateMaj: dateMaj ?? this.dateMaj,
       isActive: isActive ?? this.isActive,
       bloqueJusqua: bloqueJusqua ?? this.bloqueJusqua,
+      telephone: telephone ?? this.telephone,
     );
   }
 }
@@ -126,6 +132,10 @@ abstract class AuthService {
     required String prenom,
     required String email,
     required String sexe,
+    String? telephone,
+    String? password,
+    String? passwordConfirmation,
+    String? currentPassword,
   });
   Future<List<User>> getAllUsers();
   Future<void> setAccountActive(int userId, bool isActive, {int? dureeJours});

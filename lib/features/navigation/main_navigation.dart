@@ -12,12 +12,20 @@ class MainNavigation extends StatefulWidget {
   const MainNavigation({super.key});
 
   @override
-  State<MainNavigation> createState() => _MainNavigationState();
+  State<MainNavigation> createState() => MainNavigationState();
 }
 
-class _MainNavigationState extends State<MainNavigation> {
+class MainNavigationState extends State<MainNavigation> {
   int _currentIndex = 0;
   late StreamSubscription<User?> _authSubscription;
+
+  void setIndex(int index) {
+    if (mounted) {
+      setState(() {
+        _currentIndex = index;
+      });
+    }
+  }
 
   @override
   void initState() {

@@ -49,5 +49,9 @@
 	<string>Cette application utilise la caméra pour scanner les QR Codes des tables des restaurants.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Cette application accède à vos photos pour ajouter le logo, la photo du restaurant et les images des plats.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Cette application nécessite l'accès à votre position pour vous montrer les restaurants les plus proches de vous et calculer votre distance.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Cette application nécessite l'accès à votre position pour vous montrer les restaurants les plus proches de vous et calculer votre distance.</string>
 </dict>
 </plist>

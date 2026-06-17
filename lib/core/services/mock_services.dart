@@ -120,6 +120,10 @@ class MockAuthService implements AuthService {
     required String prenom,
     required String email,
     required String sexe,
+    String? telephone,
+    String? password,
+    String? passwordConfirmation,
+    String? currentPassword,
   }) async {
     await Future.delayed(const Duration(milliseconds: 350));
     final user = _currentUser;
@@ -132,6 +136,7 @@ class MockAuthService implements AuthService {
       prenom: prenom,
       email: email,
       sexe: sexe,
+      telephone: telephone,
       dateMaj: DateTime.now(),
     );
     _currentUser = updatedUser;

@@ -476,13 +476,6 @@ class _GerantDashboardState extends State<GerantDashboard> {
                     Row(
                       children: [
                         Expanded(
-                          child: _buildStatChip(
-                            icon: Icons.restaurant_menu_rounded,
-                            label: '${restaurant.menu.length} plats',
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
                           child: ElevatedButton.icon(
                             onPressed: () =>
                                 _openRestaurantManagement(restaurant),
@@ -547,30 +540,7 @@ class _GerantDashboardState extends State<GerantDashboard> {
     );
   }
 
-  Widget _buildStatChip({required IconData icon, required String label}) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-      decoration: BoxDecoration(
-        color: AppColors.cremeFonce.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, size: 15, color: AppColors.marronFonce),
-          const SizedBox(width: 6),
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: AppColors.marronFonce,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+
 }
 
 // Widget séparé pour le bouton QR avec RepaintBoundary — compatible Web

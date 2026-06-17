@@ -32,42 +32,53 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _loadProfile() async {
-    // On rafraichit d'abord le user depuis l'API pour avoir le role a jour
     try {
-      await ServiceLocator.authService.refreshCurrentUser();
-    } catch (_) {}
+      // On rafraichit d'abord le user depuis l'API pour avoir le role a jour
+      try {
+        await ServiceLocator.authService.refreshCurrentUser();
+      } catch (_) {}
 
-    final user = ServiceLocator.authService.currentUser;
-    final lists = await ServiceLocator.restaurantService.getExplorationLists();
-    final reviews = await ServiceLocator.reviewService.getAllReviews();
-    final managedRestaurants = user == null || user.role == 'visiteur'
-        ? <Restaurant>[]
-        : await ServiceLocator.restaurantService.getRestaurantsByManager(
-            user.id,
-          );
-    final exploreLists = lists.where(_isExploreList).toList();
-    final pendingRestaurants = managedRestaurants
-        .where((restaurant) => !restaurant.estValide)
-        .toList();
+      final user = ServiceLocator.authService.currentUser;
+      final lists = await ServiceLocator.restaurantService.getExplorationLists();
+      final reviews = await ServiceLocator.reviewService.getAllReviews();
+      final managedRestaurants = user == null || user.role == 'visiteur'
+          ? <Restaurant>[]
+          : await ServiceLocator.restaurantService.getRestaurantsByManager(
+              user.id,
+            );
+      final exploreLists = lists.where(_isExploreList).toList();
+      final pendingRestaurants = managedRestaurants
+          .where((restaurant) => !restaurant.estValide)
+          .toList();
 
-    if (!mounted) return;
+      if (!mounted) return;
 
-    setState(() {
-      _currentUser = user;
-      _pendingRestaurants = pendingRestaurants;
-      _exploreCount = exploreLists.fold<int>(
-        0,
-        (total, list) => total + list.adresses.length,
-      );
-      _publishedReviewsCount = user == null
-          ? 0
-          : reviews
-                .where(
-                  (review) => review.nomAuteur == user.name && review.estPublie,
-                )
-                .length;
-      _isLoading = false;
-    });
+      setState(() {
+        _currentUser = user;
+        _pendingRestaurants = pendingRestaurants;
+        _exploreCount = exploreLists.fold<int>(
+          0,
+          (total, list) => total + list.adresses.length,
+        );
+        _publishedReviewsCount = user == null
+            ? 0
+            : reviews
+                  .where(
+                    (review) => review.nomAuteur == user.name && review.estPublie,
+                  )
+                  .length;
+        _isLoading = false;
+      });
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erreur de chargement du profil: $e')),
+        );
+      }
+    }
   }
 
   bool _isExploreList(ExplorationList list) {
@@ -133,7 +144,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   context,
                   icon: Icons.edit_outlined,
                   title: "Editer profil",
-                  subtitle: "Nom, prenom, email et sexe",
+                  subtitle: "Nom, prenom, email, sexe et numero",
                   onTap: user == null
                       ? null
                       : () async {
@@ -313,7 +324,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
-                                    isVisitor ? "Session invitee" : user.email,
+                                    isVisitor
+                                        ? "Session invitee"
+                                        : "${user.email}${user.telephone != null && user.telephone!.isNotEmpty ? ' • ${user.telephone}' : ''}",
                                     style: textTheme.bodyMedium?.copyWith(
                                       color: AppColors.grisTexte,
                                       fontSize: 13,

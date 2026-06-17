@@ -24,16 +24,14 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _isLoading = true;
   String _query = "";
 
-  final List<String> _categories = [
-    "Tous",
-    "Plats Principaux",
-    "Entrées",
-    "Desserts",
-    "Boissons",
-    "Pizzas",
-    "Burgers"
-  ];
   String _selectedCategory = "Tous";
+
+  /// Catégories disponibles construites dynamiquement depuis les restaurants chargés.
+  List<String> get _categories {
+    final types = _restaurants.map((r) => r.categorie).where((c) => c.isNotEmpty).toSet().toList();
+    types.sort();
+    return ["Tous", ...types];
+  }
 
   @override
   void dispose() {
@@ -64,37 +62,44 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _loadRestaurants() async {
-    List<Restaurant> list = _query.trim().isEmpty
-        ? await ServiceLocator.restaurantService.getRestaurants()
-        : await ServiceLocator.restaurantService.searchRestaurants(_query);
+    try {
+      List<Restaurant> list = _query.trim().isEmpty
+          ? await ServiceLocator.restaurantService.getRestaurants()
+          : await ServiceLocator.restaurantService.searchRestaurants(_query);
 
-    // Filtrer par budget max
-    final budgetText = _budgetController.text.trim();
-    if (budgetText.isNotEmpty) {
-      final budget = double.tryParse(budgetText.replaceAll(RegExp(r'[^0-9]'), ''));
-      if (budget != null) {
-        list = list.where((restaurant) {
-          return restaurant.menu.any((plat) => plat.prix <= budget);
-        }).toList();
+      // Filtrer par budget max
+      final budgetText = _budgetController.text.trim();
+      if (budgetText.isNotEmpty) {
+        final budget = double.tryParse(budgetText.replaceAll(RegExp(r'[^0-9]'), ''));
+        if (budget != null) {
+          list = list.where((restaurant) {
+            return restaurant.menu.any((plat) => plat.prix <= budget);
+          }).toList();
+        }
       }
-    }
 
-    // Filtrer par catégorie
-    if (_selectedCategory != "Tous") {
-      list = list.where((restaurant) {
-        final matchResCategory = restaurant.categorie.toLowerCase() == _selectedCategory.toLowerCase();
-        final matchPlatCategory = restaurant.menu.any(
-          (plat) => plat.categorie.toLowerCase() == _selectedCategory.toLowerCase(),
+      // Filtrer par type de restaurant (catégorie)
+      if (_selectedCategory != "Tous") {
+        list = list.where((restaurant) =>
+          restaurant.categorie.toLowerCase() == _selectedCategory.toLowerCase()
+        ).toList();
+      }
+
+      if (mounted) {
+        setState(() {
+          _restaurants = list;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erreur lors du chargement des restaurants: $e')),
         );
-        return matchResCategory || matchPlatCategory;
-      }).toList();
-    }
-
-    if (mounted) {
-      setState(() {
-        _restaurants = list;
-        _isLoading = false;
-      });
+      }
     }
   }
 
@@ -265,10 +270,11 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                   const SizedBox(height: 18),
+                  if (_categories.length > 1) ...[  
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 24.0),
                     child: Text(
-                      "FILTRER PAR CATÉGORIE",
+                      "TYPE DE RESTAURANT",
                       style: textTheme.labelLarge?.copyWith(
                         color: AppColors.terracotta,
                         fontSize: 11,
@@ -319,6 +325,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       },
                     ),
                   ),
+                  ],  // end if _categories.length > 1
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 24.0),
                     child: Column(
@@ -357,15 +364,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildRestaurantListItem(BuildContext context, Restaurant restaurant) {
     final textTheme = Theme.of(context).textTheme;
-
-    final budgetText = _budgetController.text.trim();
-    final double? budget = budgetText.isNotEmpty
-        ? double.tryParse(budgetText.replaceAll(RegExp(r'[^0-9]'), ''))
-        : null;
-
-    final matchingDishes = budget != null
-        ? restaurant.menu.where((plat) => plat.disponible && plat.prix <= budget).toList()
-        : <Plat>[];
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -440,74 +438,17 @@ class _HomeScreenState extends State<HomeScreen> {
                         const SizedBox(width: 4),
                         Expanded(
                           child: Text(
-                            restaurant.adresse,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: textTheme.bodyMedium?.copyWith(
-                              color: AppColors.grisTexte,
-                              fontSize: 12,
-                            ),
+                             restaurant.adresse,
+                             maxLines: 1,
+                             overflow: TextOverflow.ellipsis,
+                             style: textTheme.bodyMedium?.copyWith(
+                               color: AppColors.grisTexte,
+                               fontSize: 12,
+                             ),
                           ),
                         ),
                       ],
                     ),
-                    if (matchingDishes.isNotEmpty) ...[
-                      const SizedBox(height: 10),
-                      const Divider(height: 1, color: AppColors.grisBordure),
-                      const SizedBox(height: 8),
-                      Text(
-                        "PLATS DANS LE BUDGET",
-                        style: textTheme.labelLarge?.copyWith(
-                          color: AppColors.terracotta,
-                          fontSize: 10,
-                          letterSpacing: 1.0,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Wrap(
-                        spacing: 6,
-                        runSpacing: 6,
-                        children: matchingDishes.map((plat) {
-                          return Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: AppColors.cremeFonce,
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(color: AppColors.grisBordure),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(
-                                  Icons.restaurant_menu,
-                                  size: 12,
-                                  color: AppColors.terracotta,
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  plat.nom,
-                                  style: textTheme.bodyMedium?.copyWith(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w600,
-                                    color: AppColors.marronFonce,
-                                  ),
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  '· ${plat.prix.toInt()} FCFA',
-                                  style: textTheme.bodyMedium?.copyWith(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.bold,
-                                    color: AppColors.terracotta,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          );
-                        }).toList(),
-                      ),
-                    ],
                   ],
                 ),
               ),

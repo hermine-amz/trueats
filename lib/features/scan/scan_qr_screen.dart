@@ -1,5 +1,7 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 import '../../core/services/interfaces.dart';
 import '../../core/services/service_locator.dart';
@@ -7,6 +9,7 @@ import '../../core/theme.dart';
 import '../../core/widgets/app_feedback.dart';
 import '../restaurant/restaurant_details_screen.dart';
 import '../restaurant/write_review_screen.dart';
+import '../navigation/main_navigation.dart';
 
 class ScanQrScreen extends StatefulWidget {
   const ScanQrScreen({super.key});
@@ -19,6 +22,7 @@ class _ScanQrScreenState extends State<ScanQrScreen> {
   User? _currentUser;
   bool _isScanning = true;
   bool _isLoading = false;
+  bool? _cameraPermissionGranted; // null = chargement, true = accordée, false = refusée
   Restaurant? _scannedRestaurant;
   final MobileScannerController _scannerController = MobileScannerController();
 
@@ -26,6 +30,22 @@ class _ScanQrScreenState extends State<ScanQrScreen> {
   void initState() {
     super.initState();
     _currentUser = ServiceLocator.authService.currentUser;
+    _requestCameraPermission();
+  }
+
+  Future<void> _requestCameraPermission() async {
+    // Sur le web, la permission est gérée par le navigateur au moment de l'accès
+    if (kIsWeb) {
+      setState(() => _cameraPermissionGranted = true);
+      return;
+    }
+
+    final status = await Permission.camera.request();
+    if (mounted) {
+      setState(() {
+        _cameraPermissionGranted = status.isGranted;
+      });
+    }
   }
 
   @override
@@ -102,10 +122,6 @@ class _ScanQrScreenState extends State<ScanQrScreen> {
     }
   }
 
-  Future<void> _simulateScanningSuccess() async {
-    await _handleQrCodeScanned('trueats_restaurant_1');
-  }
-
   void _onResetScan() {
     setState(() {
       _isScanning = true;
@@ -114,14 +130,111 @@ class _ScanQrScreenState extends State<ScanQrScreen> {
     _scannerController.start();
   }
 
+  void _goBackOrHome() {
+    if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+    } else {
+      context.findAncestorStateOfType<MainNavigationState>()?.setIndex(0);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
 
+    // --- Chargement de la permission ---
+    if (_cameraPermissionGranted == null) {
+      return Scaffold(
+        backgroundColor: Colors.black,
+        appBar: AppBar(
+          backgroundColor: Colors.black,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: Colors.white),
+            onPressed: _goBackOrHome,
+          ),
+        ),
+        body: const Center(
+          child: CircularProgressIndicator(color: Colors.white),
+        ),
+      );
+    }
+
+    // --- Permission refusée ---
+    if (_cameraPermissionGranted == false) {
+      return Scaffold(
+        backgroundColor: Colors.black,
+        appBar: AppBar(
+          backgroundColor: Colors.black,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: Colors.white),
+            onPressed: _goBackOrHome,
+          ),
+        ),
+        body: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.no_photography_outlined, color: Colors.white60, size: 72),
+                const SizedBox(height: 24),
+                const Text(
+                  'Accès caméra requis',
+                  style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  'TrueAts a besoin d\'accéder à votre caméra pour scanner les QR Codes des restaurants.',
+                  style: TextStyle(color: Colors.white60, fontSize: 15),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 32),
+                ElevatedButton.icon(
+                  onPressed: () async {
+                    await openAppSettings();
+                  },
+                  icon: const Icon(Icons.settings),
+                  label: const Text('Ouvrir les paramètres'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.terracotta,
+                    foregroundColor: Colors.white,
+                    minimumSize: const Size(double.infinity, 50),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextButton(
+                  onPressed: _requestCameraPermission,
+                  child: const Text('Réessayer', style: TextStyle(color: Colors.white70)),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     if (_isLoading) {
-      return const Scaffold(
+      return Scaffold(
         backgroundColor: AppColors.creme,
-        body: Center(
+        appBar: AppBar(
+          backgroundColor: AppColors.creme,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: AppColors.marronFonce),
+            onPressed: () {
+              setState(() {
+                _isLoading = false;
+                _isScanning = true;
+              });
+              _scannerController.start();
+            },
+          ),
+        ),
+        body: const Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -177,20 +290,7 @@ class _ScanQrScreenState extends State<ScanQrScreen> {
                 ],
               ),
             ),
-            Positioned(
-              bottom: 60,
-              left: 40,
-              right: 40,
-              child: ElevatedButton(
-                onPressed: _simulateScanningSuccess,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.sauge,
-                  foregroundColor: Colors.white,
-                  minimumSize: const Size(double.infinity, 50),
-                ),
-                child: const Text("Simuler le scan d'une table"),
-              ),
-            ),
+
             Positioned(
               top: 50,
               left: 16,
@@ -198,14 +298,7 @@ class _ScanQrScreenState extends State<ScanQrScreen> {
                 backgroundColor: Colors.black45,
                 child: IconButton(
                   icon: const Icon(Icons.close, color: Colors.white),
-                  onPressed: () {
-                    showAppNotification(
-                      context,
-                      title: "Scanner",
-                      message: "Retour à l'accueil",
-                      type: AppFeedbackType.info,
-                    );
-                  },
+                  onPressed: _goBackOrHome,
                 ),
               ),
             ),
