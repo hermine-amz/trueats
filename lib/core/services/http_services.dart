@@ -13,16 +13,19 @@ class ApiClient {
   static String? _token;
   static final _tokenController = StreamController<String?>.broadcast();
 
+    static final baseurl = "https://riches-prance-education.ngrok-free.dev/api";
+
+
   static String get baseUrl {
     // Si l'application tourne sur le web ou sur un appareil physique / simulateur iOS
     if (kIsWeb) {
-      return 'http://localhost:8000/api';
+      return baseurl;
     }
-    // Si l'application tourne sur l'emulateur Android (redirection localhost)
+    // Si l'application tourne sur Android (vrai téléphone sur le même Wi-Fi)
     if (Platform.isAndroid) {
-      return 'http://10.0.2.2:8000/api';
+      return baseurl;
     }
-    return 'http://localhost:8000/api';
+    return baseurl;
   }
 
   static String? get token => _token;
