@@ -718,7 +718,7 @@ class QrDialogState extends State<QrDialog> {
                       
                       // Texte descriptif de scan en noir pur (en bas)
                       Text(
-                        'Scanner le code QR pour donner son avis et voir le menu',
+                        'Scanner le code QR pour donner votre avis et voir le menu',
                         style: GoogleFonts.outfit(
                           color: Colors.black,
                           fontSize: 11,
