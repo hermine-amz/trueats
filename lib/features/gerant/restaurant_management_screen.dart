@@ -300,10 +300,10 @@ class _RestaurantManagementScreenState
                                 .updatePlatInRestaurant(_restaurant.id, dish);
                           }
 
-                          if (!mounted) return;
+                          if (!dialogContext.mounted) return;
                           Navigator.of(dialogContext).pop();
                           await _loadData();
-                          if (!mounted) return;
+                          if (!context.mounted) return;
                           showAppNotification(
                             context,
                             title: plat == null ? 'Plat ajoute' : 'Plat modifie',
@@ -313,12 +313,14 @@ class _RestaurantManagementScreenState
                             type: AppFeedbackType.success,
                           );
                         } catch (e) {
-                          showAppNotification(
-                            dialogContext,
-                            title: "Erreur",
-                            message: "Impossible d'enregistrer le plat : $e",
-                            type: AppFeedbackType.error,
-                          );
+                          if (dialogContext.mounted) {
+                            showAppNotification(
+                              dialogContext,
+                              title: "Erreur",
+                              message: "Impossible d'enregistrer le plat : $e",
+                              type: AppFeedbackType.error,
+                            );
+                          }
                         } finally {
                           setSheetState(() {
                             isSaving = false;
@@ -555,7 +557,7 @@ class _RestaurantManagementScreenState
                     ),
                     const SizedBox(height: 12),
                     DropdownButtonFormField<String>(
-                      value: selectedRestaurantCategory,
+                      initialValue: selectedRestaurantCategory,
                       decoration: const InputDecoration(
                         labelText: 'Catégorie',
                       ),
@@ -959,10 +961,10 @@ class _RestaurantManagementScreenState
                             photoUrl: uploadedPhotoUrl,
                           );
 
-                          if (!mounted) return;
+                          if (!dialogContext.mounted) return;
                           Navigator.of(dialogContext).pop();
                           await _loadData();
-                          if (!mounted) return;
+                          if (!context.mounted) return;
                           showAppNotification(
                             context,
                             title: "Mise à jour réussie",
@@ -970,12 +972,14 @@ class _RestaurantManagementScreenState
                             type: AppFeedbackType.success,
                           );
                         } catch (e) {
-                          showAppNotification(
-                            dialogContext,
-                            title: "Erreur",
-                            message: "Impossible de mettre à jour le restaurant : $e",
-                            type: AppFeedbackType.error,
-                          );
+                          if (dialogContext.mounted) {
+                            showAppNotification(
+                              dialogContext,
+                              title: "Erreur",
+                              message: "Impossible de mettre à jour le restaurant : $e",
+                              type: AppFeedbackType.error,
+                            );
+                          }
                         } finally {
                           setSheetState(() {
                             isSaving = false;
@@ -1036,11 +1040,11 @@ class _RestaurantManagementScreenState
                                         estArchive: willArchive,
                                       );
 
-                                      if (!mounted) return;
+                                      if (!dialogContext.mounted) return;
                                       Navigator.of(dialogContext).pop();
                                       await _loadData();
                                       
-                                      if (!mounted) return;
+                                      if (!context.mounted) return;
                                       showAppNotification(
                                         context,
                                         title: willArchive ? "Restaurant archivé" : "Restaurant désarchivé",
@@ -1050,12 +1054,14 @@ class _RestaurantManagementScreenState
                                         type: AppFeedbackType.success,
                                       );
                                     } catch (e) {
-                                      showAppNotification(
-                                        dialogContext,
-                                        title: "Erreur",
-                                        message: "Impossible de modifier le statut : $e",
-                                        type: AppFeedbackType.error,
-                                      );
+                                      if (dialogContext.mounted) {
+                                        showAppNotification(
+                                          dialogContext,
+                                          title: "Erreur",
+                                          message: "Impossible de modifier le statut : $e",
+                                          type: AppFeedbackType.error,
+                                        );
+                                      }
                                     } finally {
                                       setSheetState(() {
                                         isSaving = false;
@@ -1100,8 +1106,9 @@ class _RestaurantManagementScreenState
                                     try {
                                       await ServiceLocator.restaurantService.deleteRestaurant(restaurant.id);
 
-                                      if (!mounted) return;
+                                      if (!dialogContext.mounted) return;
                                       Navigator.of(dialogContext).pop();
+                                      if (!context.mounted) return;
                                       Navigator.of(context).pop();
 
                                       showAppNotification(
@@ -1111,12 +1118,14 @@ class _RestaurantManagementScreenState
                                         type: AppFeedbackType.success,
                                       );
                                     } catch (e) {
-                                      showAppNotification(
-                                        dialogContext,
-                                        title: "Erreur",
-                                        message: "Impossible de supprimer le restaurant : $e",
-                                        type: AppFeedbackType.error,
-                                      );
+                                      if (dialogContext.mounted) {
+                                        showAppNotification(
+                                          dialogContext,
+                                          title: "Erreur",
+                                          message: "Impossible de supprimer le restaurant : $e",
+                                          type: AppFeedbackType.error,
+                                        );
+                                      }
                                     } finally {
                                       setSheetState(() {
                                         isSaving = false;
@@ -1172,6 +1181,7 @@ class _RestaurantManagementScreenState
     );
     if (!mounted) return;
     await _loadData();
+    if (!mounted) return;
     showAppNotification(
       context,
       title: 'Plat retire',
@@ -1465,7 +1475,7 @@ class _RestaurantManagementScreenState
 
                                     try {
                                       await ServiceLocator.restaurantService.deleteRestaurant(_restaurant.id);
-                                      if (!mounted) return;
+                                      if (!context.mounted) return;
                                       Navigator.of(context).pop();
                                       showAppNotification(
                                         context,
@@ -1474,7 +1484,7 @@ class _RestaurantManagementScreenState
                                         type: AppFeedbackType.success,
                                       );
                                     } catch (e) {
-                                      if (mounted) {
+                                      if (context.mounted) {
                                         showAppNotification(
                                           context,
                                           title: "Erreur",
@@ -2175,14 +2185,18 @@ class _RestaurantAvisScreenState extends State<_RestaurantAvisScreen> {
                               reason: reason,
                               reporterName: reporterName,
                             );
-                            Navigator.of(context).pop(true);
+                            if (context.mounted) {
+                              Navigator.of(context).pop(true);
+                            }
                           } catch (e) {
-                            showAppNotification(
-                              context,
-                              title: 'Erreur',
-                              message: "Impossible de signaler : $e",
-                              type: AppFeedbackType.error,
-                            );
+                            if (context.mounted) {
+                              showAppNotification(
+                                context,
+                                title: 'Erreur',
+                                message: "Impossible de signaler : $e",
+                                type: AppFeedbackType.error,
+                              );
+                            }
                           }
                         },
                         style: ElevatedButton.styleFrom(
@@ -2202,7 +2216,7 @@ class _RestaurantAvisScreenState extends State<_RestaurantAvisScreen> {
     );
 
     if (result == true) {
-      if (mounted) {
+      if (context.mounted) {
         showAppNotification(
           context,
           title: 'Avis signalé',

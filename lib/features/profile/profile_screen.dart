@@ -185,7 +185,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         });
                         try {
                           await ServiceLocator.authService.deleteAccount();
-                          if (!mounted) return;
+                          if (!context.mounted) return;
                           showAppNotification(
                             context,
                             title: "Compte supprimé",
@@ -197,7 +197,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             (route) => false,
                           );
                         } catch (e) {
-                          if (!mounted) return;
+                          if (!context.mounted) return;
                           setState(() {
                             _isLoading = false;
                           });

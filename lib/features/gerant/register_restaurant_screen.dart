@@ -802,7 +802,7 @@ class _RegisterRestaurantScreenState extends State<RegisterRestaurantScreen> {
                 StatefulBuilder(
                   builder: (context, setDropState) {
                     return DropdownButtonFormField<String>(
-                      value: _selectedRestaurantCategory,
+                      initialValue: _selectedRestaurantCategory,
                       decoration: InputDecoration(
                         labelText: 'Catégorie',
                         filled: true,

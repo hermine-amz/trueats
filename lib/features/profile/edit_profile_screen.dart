@@ -183,7 +183,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     ),
                     const SizedBox(height: 14),
                     DropdownButtonFormField<String>(
-                      value: _selectedSexe,
+                      initialValue: _selectedSexe,
                       decoration: const InputDecoration(
                         labelText: "Sexe",
                         prefixIcon: Icon(Icons.wc_outlined),
