@@ -1,5 +1,3 @@
-# trueats
-
 # TruEats - Plateforme d'Avis Fiables pour Restaurants
 
 TruEats est une application mobile moderne et sécurisée conçue pour faciliter l'interaction entre les clients et les restaurants. L'application permet aux clients de scanner le code QR d'une table pour accéder instantanément au menu et soumettre des avis certifiés grâce à une double-validation géographique par GPS. Elle intègre également un espace gérant complet pour l'administration des établissements et une console d'administration pour la modération globale.
