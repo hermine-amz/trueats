@@ -8,10 +8,11 @@ Future<void> downloadFileWeb(Uint8List bytes, String filename) async {
     final tempDir = await getTemporaryDirectory();
     final tempFile = File('${tempDir.path}/$filename');
     await tempFile.writeAsBytes(bytes);
-    
-    await Share.shareXFiles(
-      [XFile(tempFile.path)],
-      text: 'Voici le QR Code de mon restaurant sur TrueAts.',
+    await SharePlus.instance.share(
+      ShareParams(
+        files: [XFile(tempFile.path)],
+        text: 'Voici le QR Code de mon restaurant sur TrueAts.',
+      ),
     );
   } catch (e) {
     throw Exception('Erreur lors du partage du QR code: $e');

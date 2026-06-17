@@ -709,7 +709,7 @@ class _AdminConsoleState extends State<AdminConsole> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
+        color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Text(
@@ -796,9 +796,9 @@ class _AdminConsoleState extends State<AdminConsole> {
               width: double.infinity,
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: AppColors.rougeSignalement.withOpacity(0.08),
+                color: AppColors.rougeSignalement.withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: AppColors.rougeSignalement.withOpacity(0.2)),
+                border: Border.all(color: AppColors.rougeSignalement.withValues(alpha: 0.2)),
               ),
               child: Text(
                 "Motif de rejet : ${demande.motifRejet}",
@@ -1214,7 +1214,7 @@ class _ModerationAvisPageState extends State<_ModerationAvisPage> {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 14),
       decoration: const BoxDecoration(
-        color: const Color(0xFFFDFBF7),
+        color: Color(0xFFFDFBF7),
         border: Border(top: BorderSide(color: AppColors.grisBordure)),
       ),
       child: Row(
@@ -1267,7 +1267,7 @@ class _ModerationAvisPageState extends State<_ModerationAvisPage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
+        color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Text(
@@ -1677,7 +1677,7 @@ class _ComptesPageState extends State<_ComptesPage> {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 14),
       decoration: const BoxDecoration(
-        color: const Color(0xFFFDFBF7),
+        color: Color(0xFFFDFBF7),
         border: Border(top: BorderSide(color: AppColors.grisBordure)),
       ),
       child: Row(
@@ -1733,7 +1733,7 @@ class _ComptesPageState extends State<_ComptesPage> {
                       width: 44,
                       height: 44,
                       decoration: BoxDecoration(
-                        color: AppColors.rougeSignalement.withOpacity(0.12),
+                        color: AppColors.rougeSignalement.withValues(alpha: 0.12),
                         shape: BoxShape.circle,
                       ),
                       child: const Icon(
