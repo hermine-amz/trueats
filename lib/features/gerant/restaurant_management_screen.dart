@@ -1997,45 +1997,6 @@ class _RestaurantManagementScreenState
     );
   }
 
-  Widget _buildReviewTile(BuildContext context, Avis review) {
-    final textTheme = Theme.of(context).textTheme;
-    return Container(
-      margin: const EdgeInsets.only(bottom: 14),
-      padding: const EdgeInsets.all(16),
-      decoration: _cardDecoration(),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(review.nomAuteur, style: textTheme.titleLarge),
-              Row(
-                children: [
-                  const Icon(Icons.star, color: AppColors.terracotta, size: 16),
-                  const SizedBox(width: 4),
-                  Text(
-                    review.note.toString(),
-                    style: textTheme.bodyLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Text(review.commentaire, style: textTheme.bodyMedium),
-          const SizedBox(height: 8),
-          Text(
-            'Publie le ${review.dateVisite.day}/${review.dateVisite.month}/${review.dateVisite.year}',
-            style: textTheme.bodySmall?.copyWith(color: AppColors.grisTexte),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildKpiCard(
     BuildContext context,
     String title,
@@ -2255,8 +2216,6 @@ class _RestaurantAvisScreenState extends State<_RestaurantAvisScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-
     return Scaffold(
       backgroundColor: AppColors.creme,
       appBar: AppBar(

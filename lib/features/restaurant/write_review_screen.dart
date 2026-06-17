@@ -24,7 +24,6 @@ class _WriteReviewScreenState extends State<WriteReviewScreen> {
   bool _isUsingDefaultComment = true;
   bool _isCheckingGps = true;
   bool _isNear = false;
-  double _calculatedDistance = 0.0;
   bool _isSubmitting = false;
 
   @override
@@ -88,7 +87,6 @@ class _WriteReviewScreenState extends State<WriteReviewScreen> {
 
       if (mounted) {
         setState(() {
-          _calculatedDistance = distance;
           _isNear = distance <= widget.restaurant.rayonMetres;
           _isCheckingGps = false;
         });
