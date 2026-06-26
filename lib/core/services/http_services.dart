@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -16,14 +15,8 @@ class ApiClient {
 
 
   static String get baseUrl {
-    // Si l'application tourne sur le web ou sur un appareil physique / simulateur iOS
-    if (kIsWeb) {
-      return baseurl;
-    }
-    // Si l'application tourne sur Android (vrai téléphone sur le même Wi-Fi)
-    if (Platform.isAndroid) {
-      return baseurl;
-    }
+    // Utiliser l'URL ngrok partout pour assurer la compatibilité
+    // avec les QR codes et les tests sur différents appareils.
     return baseurl;
   }
 
@@ -59,6 +52,46 @@ class ApiClient {
     return headers;
   }
 
+  static String sanitizeErrorMessage(dynamic error) {
+    final str = error.toString();
+    final lower = str.toLowerCase();
+
+    // Intercept generic network, ngrok, database, or technical crash error details
+    if (lower.contains('socketexception') ||
+        lower.contains('httpexception') ||
+        lower.contains('handshakeexception') ||
+        lower.contains('clientexception') ||
+        lower.contains('connection refused') ||
+        lower.contains('host lookup') ||
+        lower.contains('ngrok') ||
+        lower.contains('tunnel') ||
+        lower.contains('failed to connect') ||
+        lower.contains('network is unreachable') ||
+        lower.contains('timed out') ||
+        lower.contains('timeout') ||
+        lower.contains('sql') ||
+        lower.contains('database') ||
+        lower.contains('driver') ||
+        lower.contains('mariadb') ||
+        lower.contains('mysql') ||
+        lower.contains('sqlite') ||
+        lower.contains('postgre') ||
+        lower.contains('syntax error') ||
+        lower.contains('stack trace') ||
+        lower.contains('internal server error') ||
+        lower.contains('500') ||
+        lower.contains('502') ||
+        lower.contains('503') ||
+        lower.contains('504')) {
+      return "Le service est temporairement indisponible. Veuillez vérifier votre connexion ou réessayer plus tard.";
+    }
+
+    if (str.startsWith('Exception: ')) {
+      return str.substring(11);
+    }
+    return str;
+  }
+
   static dynamic _handleResponse(http.Response response) {
     final body = response.body;
     final statusCode = response.statusCode;
@@ -67,6 +100,38 @@ class ApiClient {
       // Deconnexion automatique si non autorise
       setToken(null);
       throw Exception('Session expiree. Veuillez vous reconnecter.');
+    }
+
+    if (statusCode == 403) {
+      try {
+        final decoded = jsonDecode(body);
+        if (decoded is Map && (decoded['is_permanent'] != null || decoded['motif'] != null || decoded['bloque_jusqua'] != null || (decoded['message'] != null && (decoded['message'].toString().contains('suspendu') || decoded['message'].toString().contains('banni') || decoded['message'].toString().contains('deactivated') || decoded['message'].toString().contains('suspended'))))) {
+          final String msg = decoded['message'] ?? "Votre compte est bloqué.";
+          final String? motif = decoded['motif'];
+          final DateTime? bloqueJusquaVal = decoded['bloque_jusqua'] != null ? DateTime.tryParse(decoded['bloque_jusqua']) : null;
+          final bool isPermanent = decoded['is_permanent'] == true || (bloqueJusquaVal == null && decoded['bloque_jusqua'] == null);
+          final String? email = decoded['email'];
+          final int? userId = decoded['user_id'] != null ? int.tryParse(decoded['user_id'].toString()) : null;
+          
+          setToken(null);
+          
+          throw BlockedAccountException(
+            message: msg,
+            motif: motif,
+            bloqueJusqua: bloqueJusquaVal,
+            isPermanent: isPermanent,
+            email: email,
+            userId: userId,
+          );
+        }
+      } catch (e) {
+        if (e is BlockedAccountException) rethrow;
+      }
+    }
+
+    final trimmed = body.trim();
+    if (trimmed.startsWith('<') || trimmed.startsWith('<!DOCTYPE')) {
+      throw Exception("Le service est temporairement indisponible. Veuillez vérifier votre connexion ou réessayer plus tard.");
     }
 
     if (statusCode >= 200 && statusCode < 300) {
@@ -87,7 +152,7 @@ class ApiClient {
       }
     } catch (_) {}
 
-    throw Exception(errorMessage);
+    throw Exception(sanitizeErrorMessage(errorMessage));
   }
 
   static Future<dynamic> get(String path) async {
@@ -98,8 +163,8 @@ class ApiClient {
       );
       return _handleResponse(response);
     } catch (e) {
-      if (e is Exception) rethrow;
-      throw Exception('Erreur reseau : ${e.toString()}');
+      if (e is BlockedAccountException) rethrow;
+      throw Exception(sanitizeErrorMessage(e));
     }
   }
 
@@ -112,8 +177,8 @@ class ApiClient {
       );
       return _handleResponse(response);
     } catch (e) {
-      if (e is Exception) rethrow;
-      throw Exception('Erreur reseau : ${e.toString()}');
+      if (e is BlockedAccountException) rethrow;
+      throw Exception(sanitizeErrorMessage(e));
     }
   }
 
@@ -126,8 +191,8 @@ class ApiClient {
       );
       return _handleResponse(response);
     } catch (e) {
-      if (e is Exception) rethrow;
-      throw Exception('Erreur reseau : ${e.toString()}');
+      if (e is BlockedAccountException) rethrow;
+      throw Exception(sanitizeErrorMessage(e));
     }
   }
 
@@ -140,8 +205,8 @@ class ApiClient {
       );
       return _handleResponse(response);
     } catch (e) {
-      if (e is Exception) rethrow;
-      throw Exception('Erreur reseau : ${e.toString()}');
+      if (e is BlockedAccountException) rethrow;
+      throw Exception(sanitizeErrorMessage(e));
     }
   }
 
@@ -153,8 +218,8 @@ class ApiClient {
       );
       return _handleResponse(response);
     } catch (e) {
-      if (e is Exception) rethrow;
-      throw Exception('Erreur reseau : ${e.toString()}');
+      if (e is BlockedAccountException) rethrow;
+      throw Exception(sanitizeErrorMessage(e));
     }
   }
 
@@ -205,8 +270,8 @@ class ApiClient {
       }
       throw Exception('URL manquante dans la reponse serveur.');
     } catch (e) {
-      if (e is Exception) rethrow;
-      throw Exception('Erreur upload : ${e.toString()}');
+      if (e is BlockedAccountException) rethrow;
+      throw Exception(sanitizeErrorMessage(e));
     }
   }
 }
@@ -388,12 +453,22 @@ class HttpAuthService implements AuthService {
   }
 
   @override
-  Future<void> setAccountActive(int userId, bool isActive, {int? dureeJours}) async {
+  Future<void> setAccountActive(
+    int userId,
+    bool isActive, {
+    int? dureeJours,
+    String? motif,
+    bool? restrictionAvis,
+    bool? restrictionGerant,
+  }) async {
     try {
       // Laravel attend 'bloque' => boolean (true pour bloquer, false pour debloquer)
       await ApiClient.post('/admin/users/$userId/bloquer', {
         'bloque': !isActive,
         if (dureeJours != null) 'duree_jours': dureeJours,
+        if (motif != null) 'motif': motif,
+        if (restrictionAvis != null) 'restriction_avis': restrictionAvis,
+        if (restrictionGerant != null) 'restriction_gerant': restrictionGerant,
       });
       // Mettre a jour localement si c'est l'utilisateur en cours
       if (_currentUser?.id == userId) {
@@ -402,6 +477,8 @@ class HttpAuthService implements AuthService {
         _currentUser = _currentUser!.copyWith(
           isActive: isActive,
           bloqueJusqua: dateSuspension,
+          restrictionAvis: restrictionAvis ?? false,
+          restrictionGerant: restrictionGerant ?? false,
         );
         _authController.add(_currentUser);
       }
@@ -417,6 +494,129 @@ class HttpAuthService implements AuthService {
       await ApiClient.setToken(null);
       _currentUser = null;
       _authController.add(null);
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  @override
+  Future<void> requestAccountDeletion({required String email, required String reason, String? comment}) async {
+    try {
+      await ApiClient.post('/user/profile/delete-request', {
+        'email': email,
+        'reason': reason,
+        'comment': comment,
+      });
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  @override
+  Future<void> confirmAccountDeletion({required String code}) async {
+    try {
+      await ApiClient.post('/user/profile/delete-confirm', {
+        'code': code,
+      });
+      await ApiClient.setToken(null);
+      _currentUser = null;
+      _authController.add(null);
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  @override
+  Future<void> sendForgotPasswordCode({required String email}) async {
+    try {
+      await ApiClient.post('/password/forgot', {
+        'email': email.trim(),
+      });
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  @override
+  Future<void> verifyForgotPasswordCode({required String email, required String code}) async {
+    try {
+      await ApiClient.post('/password/verify', {
+        'email': email.trim(),
+        'code': code.trim(),
+      });
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  @override
+  Future<void> resetPassword({required String email, required String code, required String password}) async {
+    try {
+      await ApiClient.post('/password/reset', {
+        'email': email.trim(),
+        'code': code.trim(),
+        'password': password,
+        'password_confirmation': password,
+      });
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  @override
+  Future<List<AppNotification>> getNotifications() async {
+    try {
+      final data = await ApiClient.get('/notifications');
+      if (data is List) {
+        return data.map((json) => AppNotification.fromJson(json)).toList();
+      }
+      return [];
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  @override
+  Future<void> markNotificationRead(int id) async {
+    try {
+      await ApiClient.post('/notifications/$id/read', {});
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  @override
+  Future<void> submitAppeal({required String message, String? email, String? password}) async {
+    try {
+      await ApiClient.post('/recours', {
+        'message': message,
+        if (email != null) 'email': email,
+        if (password != null) 'password': password,
+      });
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  @override
+  Future<List<UserAppeal>> getAppeals() async {
+    try {
+      final data = await ApiClient.get('/admin/recours');
+      if (data is List) {
+        return data.map((json) => UserAppeal.fromJson(json)).toList();
+      }
+      return [];
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  @override
+  Future<void> processAppeal(int appealId, {required bool accept}) async {
+    try {
+      await ApiClient.post('/admin/recours/$appealId/traiter', {
+        'action': accept ? 'accept' : 'reject',
+      });
     } catch (e) {
       rethrow;
     }
@@ -687,13 +887,11 @@ class HttpRestaurantService implements RestaurantService {
         'type_cuisine': restaurant.typeCuisine,
         'latitude': restaurant.latitude,
         'longitude': restaurant.longitude,
-        'superficie': restaurant.superficie ?? 150,
+        'superficie': restaurant.superficie,
         // Documents légaux transmis après upload séparé
         if (restaurant.cipUrl != null) 'cip_url': restaurant.cipUrl,
         if (restaurant.ifuNumero != null) 'ifu_numero': restaurant.ifuNumero,
         if (restaurant.ifuAttestationUrl != null) 'ifu_attestation_url': restaurant.ifuAttestationUrl,
-        if (restaurant.rccmNumero != null) 'rccm_numero': restaurant.rccmNumero,
-        if (restaurant.rccmExtraitUrl != null) 'rccm_extrait_url': restaurant.rccmExtraitUrl,
       });
 
       if (response != null && response['restaurant'] != null) {
@@ -788,6 +986,19 @@ class HttpReviewService implements ReviewService {
   }
 
   @override
+  Future<List<Avis>> getReviewsByUser(int userId) async {
+    try {
+      final data = await ApiClient.get('/users/$userId/avis');
+      if (data is List) {
+        return data.map((json) => Avis.fromJson(json)).toList();
+      }
+      return [];
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  @override
   Future<List<Avis>> getAllReviews() async {
     try {
       final data = await ApiClient.get('/avis');
@@ -810,6 +1021,8 @@ class HttpReviewService implements ReviewService {
     required bool isVerified,
     List<String>? photos,
     String? authorName,
+    int? userId,
+    bool estAnonyme = false,
   }) async {
     try {
       await ApiClient.post('/avis', {
@@ -818,6 +1031,7 @@ class HttpReviewService implements ReviewService {
         'commentaire': comment,
         'latitude_client': lat,
         'longitude_client': lon,
+        'est_anonyme': estAnonyme,
       });
     } catch (e) {
       rethrow;
@@ -868,15 +1082,11 @@ class HttpReviewService implements ReviewService {
 class HttpAdminService implements AdminService {
   @override
   Future<List<DemandeRestaurant>> getDemandes() async {
-    try {
-      final data = await ApiClient.get('/admin/demandes');
-      if (data is List) {
-        return data.map((json) => DemandeRestaurant.fromJson(json)).toList();
-      }
-      return [];
-    } catch (e) {
-      return [];
+    final data = await ApiClient.get('/admin/demandes');
+    if (data is List) {
+      return data.map((json) => DemandeRestaurant.fromJson(json)).toList();
     }
+    return [];
   }
 
   @override
@@ -911,4 +1121,18 @@ class HttpAdminService implements AdminService {
   Future<void> deleteUser(int userId) async {
     await ApiClient.delete('/admin/users/$userId');
   }
+
+  @override
+  Future<List<AdminActionLog>> getAdminActionLogs() async {
+    try {
+      final data = await ApiClient.get('/admin/logs');
+      if (data is List) {
+        return data.map((json) => AdminActionLog.fromJson(json)).toList();
+      }
+      return [];
+    } catch (e) {
+      rethrow;
+    }
+  }
 }
+

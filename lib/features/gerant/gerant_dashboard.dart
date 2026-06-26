@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter/rendering.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:qr_flutter/qr_flutter.dart';
@@ -12,6 +13,7 @@ import '../../core/utils/image_url_helper.dart';
 import '../../core/utils/qr_download_helper.dart';
 import '../../core/widgets/app_feedback.dart';
 import '../../core/widgets/restaurant_logo.dart';
+import '../../core/widgets/whatsapp_icon.dart';
 import '../../core/services/http_services.dart';
 import 'register_restaurant_screen.dart';
 import 'restaurant_management_screen.dart';
@@ -174,6 +176,13 @@ class _GerantDashboardState extends State<GerantDashboard> {
                       const SizedBox(height: 20),
                     ],
                   ),
+                ),
+              ),
+
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
+                  child: _buildWhatsAppContactBanner(context),
                 ),
               ),
 
@@ -540,7 +549,94 @@ class _GerantDashboardState extends State<GerantDashboard> {
     );
   }
 
+  Future<void> _launchWhatsApp(BuildContext context, String message) async {
+    final encodedMessage = Uri.encodeComponent(message);
+    final url = "https://wa.me/22991566846?text=$encodedMessage";
+    final uri = Uri.parse(url);
+    try {
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        if (context.mounted) {
+          showAppNotification(
+            context,
+            title: "Erreur",
+            message: "Impossible d'ouvrir WhatsApp.",
+            type: AppFeedbackType.error,
+          );
+        }
+      }
+    } catch (e) {
+      if (context.mounted) {
+        showAppNotification(
+          context,
+          title: "Erreur",
+          message: "Impossible de lancer le lien WhatsApp : $e",
+          type: AppFeedbackType.error,
+        );
+      }
+    }
+  }
 
+  Widget _buildWhatsAppContactBanner(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    final currentUser = ServiceLocator.authService.currentUser;
+    final name = currentUser != null ? '${currentUser.prenom} ${currentUser.nom}' : 'Gérant';
+
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: const Color(0xFFFDFBF7),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: const Color(0xFF25D366).withValues(alpha: 0.35), width: 1.5),
+      ),
+      child: InkWell(
+        onTap: () {
+          final msg = "Bonjour TruEats, je suis le gérant $name et j'aimerais avoir de l'aide concernant mes établissements.";
+          _launchWhatsApp(context, msg);
+        },
+        borderRadius: BorderRadius.circular(22),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              const WhatsAppIcon(size: 46),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "Besoin d'aide ? Contactez-nous",
+                      style: textTheme.titleLarge?.copyWith(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.marronFonce,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      "Notre support est disponible sur WhatsApp",
+                      style: textTheme.bodyMedium?.copyWith(
+                        fontSize: 12,
+                        color: AppColors.grisTexte,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              const Icon(
+                Icons.arrow_forward_ios,
+                size: 13,
+                color: Color(0xFF25D366),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 // Widget séparé pour le bouton QR avec RepaintBoundary — compatible Web
@@ -707,7 +803,7 @@ class QrDialogState extends State<QrDialog> {
                       // QR Code sans logo
                       QrImageWidget(
                         data: (() {
-                          final apiBase = ApiClient.baseUrl;
+                          final apiBase = ApiClient.baseurl;
                           final origin = apiBase.endsWith('/api')
                               ? apiBase.substring(0, apiBase.length - 4)
                               : apiBase;

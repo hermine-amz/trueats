@@ -650,12 +650,39 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
         _buildInfoRow(
           Icons.access_time,
           'Horaires d\'ouverture',
-          _restaurant.horaires ?? 'Non renseigné',
+          _formatHorairesForDisplay(_restaurant.horaires),
         ),
         const SizedBox(height: 16),
         _buildInfoRow(Icons.phone_outlined, 'Téléphone', _restaurant.telephone ?? 'Non renseigné'),
       ],
     );
+  }
+
+  String _formatHorairesForDisplay(String? horairesStr) {
+    if (horairesStr == null || horairesStr.trim().isEmpty) {
+      return 'Non renseigné';
+    }
+    
+    if (horairesStr.toLowerCase().contains('lundi')) {
+      return horairesStr;
+    }
+    
+    if (horairesStr.contains('-')) {
+      final parts = horairesStr.split('-');
+      if (parts.length == 2) {
+        final start = parts[0].trim();
+        final end = parts[1].trim();
+        return 'Lundi : $start - $end\n'
+               'Mardi : $start - $end\n'
+               'Mercredi : $start - $end\n'
+               'Jeudi : $start - $end\n'
+               'Vendredi : $start - $end\n'
+               'Samedi : $start - $end\n'
+               'Dimanche : $start - $end';
+      }
+    }
+    
+    return horairesStr;
   }
 
   Widget _buildInfoRow(IconData icon, String title, String val) {

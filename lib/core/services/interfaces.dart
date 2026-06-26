@@ -22,6 +22,11 @@ class User {
   final bool isActive;
   final DateTime? bloqueJusqua;
   final String? telephone;
+  final bool isGuest;
+  final bool restrictionAvis;
+  final bool restrictionGerant;
+  final List<Restaurant> restaurants;
+  final List<Avis> avis;
 
   User({
     required this.id,
@@ -35,6 +40,11 @@ class User {
     this.isActive = true,
     this.bloqueJusqua,
     this.telephone,
+    this.isGuest = false,
+    this.restrictionAvis = false,
+    this.restrictionGerant = false,
+    this.restaurants = const [],
+    this.avis = const [],
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
@@ -45,8 +55,39 @@ class User {
     }
 
     final DateTime? bloqueJusquaVal = json['bloque_jusqua'] != null ? DateTime.tryParse(json['bloque_jusqua']) : null;
-    final isBlockedByDate = bloqueJusquaVal != null && bloqueJusquaVal.isAfter(DateTime.now());
-    final isActiveVal = (json['compte_active'] == 1 || json['compte_active'] == true || (json['compte_active'] ?? true)) && !isBlockedByDate;
+    final bool isRestrictionActive = bloqueJusquaVal != null && bloqueJusquaVal.isAfter(DateTime.now());
+
+    final bool restrictionAvisVal = (json['restriction_avis'] == true || json['restriction_avis'] == 1) && isRestrictionActive;
+    final bool restrictionGerantVal = (json['restriction_gerant'] == true || json['restriction_gerant'] == 1) && isRestrictionActive;
+
+    // A user is blocked by date only if bloque_jusqua is in the future AND they don't have functional restrictions active.
+    final isBlockedByDate = bloqueJusquaVal != null &&
+                            bloqueJusquaVal.isAfter(DateTime.now()) &&
+                            !restrictionAvisVal &&
+                            !restrictionGerantVal;
+
+    final dynamic activeField = json['compte_active'];
+    final isActiveVal = (activeField == 1 || activeField == true || activeField == '1' || activeField == null) && !isBlockedByDate;
+
+    final isGuestVal = json['is_guest'] == 1 || json['is_guest'] == true || json['is_guest'] == '1';
+
+    final List<Restaurant> restaurantsList = [];
+    if (json['restaurants'] != null && json['restaurants'] is List) {
+      for (final r in json['restaurants']) {
+        if (r is Map<String, dynamic>) {
+          restaurantsList.add(Restaurant.fromJson(r));
+        }
+      }
+    }
+
+    final List<Avis> avisList = [];
+    if (json['avis'] != null && json['avis'] is List) {
+      for (final av in json['avis']) {
+        if (av is Map<String, dynamic>) {
+          avisList.add(Avis.fromJson(av));
+        }
+      }
+    }
 
     return User(
       id: json['id'],
@@ -60,6 +101,11 @@ class User {
       isActive: isActiveVal,
       bloqueJusqua: bloqueJusquaVal,
       telephone: json['telephone'],
+      isGuest: isGuestVal,
+      restrictionAvis: restrictionAvisVal,
+      restrictionGerant: restrictionGerantVal,
+      restaurants: restaurantsList,
+      avis: avisList,
     );
   }
 
@@ -76,6 +122,11 @@ class User {
       'created_at': dateInscription.toIso8601String(),
       'updated_at': dateMaj.toIso8601String(),
       'telephone': telephone,
+      'is_guest': isGuest,
+      'restriction_avis': restrictionAvis,
+      'restriction_gerant': restrictionGerant,
+      'restaurants': restaurants.map((r) => r.toJson()).toList(),
+      'avis': avis.map((av) => av.toJson()).toList(),
     };
   }
 
@@ -96,6 +147,8 @@ class User {
     bool? isActive,
     DateTime? bloqueJusqua,
     String? telephone,
+    bool? restrictionAvis,
+    bool? restrictionGerant,
   }) {
     return User(
       id: id ?? this.id,
@@ -109,8 +162,31 @@ class User {
       isActive: isActive ?? this.isActive,
       bloqueJusqua: bloqueJusqua ?? this.bloqueJusqua,
       telephone: telephone ?? this.telephone,
+      restrictionAvis: restrictionAvis ?? this.restrictionAvis,
+      restrictionGerant: restrictionGerant ?? this.restrictionGerant,
     );
   }
+}
+
+class BlockedAccountException implements Exception {
+  final String message;
+  final String? motif;
+  final DateTime? bloqueJusqua;
+  final bool isPermanent;
+  final String? email;
+  final int? userId;
+
+  BlockedAccountException({
+    required this.message,
+    this.motif,
+    this.bloqueJusqua,
+    required this.isPermanent,
+    this.email,
+    this.userId,
+  });
+
+  @override
+  String toString() => message;
 }
 
 abstract class AuthService {
@@ -138,13 +214,69 @@ abstract class AuthService {
     String? currentPassword,
   });
   Future<List<User>> getAllUsers();
-  Future<void> setAccountActive(int userId, bool isActive, {int? dureeJours});
+  Future<void> setAccountActive(
+    int userId,
+    bool isActive, {
+    int? dureeJours,
+    String? motif,
+    bool? restrictionAvis,
+    bool? restrictionGerant,
+  });
   Future<void> deleteAccount();
+  Future<void> requestAccountDeletion({required String email, required String reason, String? comment});
+  Future<void> confirmAccountDeletion({required String code});
   Future<void> refreshCurrentUser();
+  Future<void> sendForgotPasswordCode({required String email});
+  Future<void> verifyForgotPasswordCode({required String email, required String code});
+  Future<void> resetPassword({required String email, required String code, required String password});
+
+  // Notifications et Recours
+  Future<List<AppNotification>> getNotifications();
+  Future<void> markNotificationRead(int id);
+  Future<void> submitAppeal({required String message, String? email, String? password});
+  Future<List<UserAppeal>> getAppeals();
+  Future<void> processAppeal(int appealId, {required bool accept});
 
   // Utilitaire pour basculer de role lors du developpement
   void setRole(String role);
   String get currentRole;
+}
+
+class AdminActionLog {
+  final int id;
+  final int adminId;
+  final String adminName;
+  final String action;
+  final String? targetType;
+  final int? targetId;
+  final String? details;
+  final DateTime createdAt;
+
+  AdminActionLog({
+    required this.id,
+    required this.adminId,
+    required this.adminName,
+    required this.action,
+    this.targetType,
+    this.targetId,
+    this.details,
+    required this.createdAt,
+  });
+
+  factory AdminActionLog.fromJson(Map<String, dynamic> json) {
+    return AdminActionLog(
+      id: json['id'],
+      adminId: json['admin_id'],
+      adminName: json['admin_name'] ?? 'Admin inconnu',
+      action: json['action'] ?? '',
+      targetType: json['target_type'],
+      targetId: json['target_id'],
+      details: json['details'],
+      createdAt: json['created_at'] != null 
+          ? DateTime.parse(json['created_at']) 
+          : DateTime.now(),
+    );
+  }
 }
 
 abstract class RestaurantService {
@@ -200,11 +332,14 @@ abstract class AdminService {
   Future<void> validerDemande(int restaurantId, {required bool accepte, String? motifRejet});
   Future<Map<String, dynamic>> getStats();
   Future<void> deleteUser(int userId);
+  Future<List<AdminActionLog>> getAdminActionLogs();
 }
+
 
 abstract class ReviewService {
   Future<List<Avis>> getReviewsForRestaurant(int restaurantId);
   Future<List<Avis>> getAllReviews();
+  Future<List<Avis>> getReviewsByUser(int userId);
   Future<void> submitReview({
     required int restaurantId,
     required int note,
@@ -214,6 +349,8 @@ abstract class ReviewService {
     required bool isVerified,
     List<String>? photos,
     String? authorName,
+    int? userId,
+    bool estAnonyme = false,
   });
 
   // Signalements
@@ -236,4 +373,72 @@ abstract class LocationService {
 
   // Calcul de distance en metres
   double calculateDistance(double lat1, double lon1, double lat2, double lon2);
+}
+
+class AppNotification {
+  final int id;
+  final int userId;
+  final String title;
+  final String content;
+  final String type; // 'sanction', 'info', 'sanction_lifted', etc.
+  final DateTime? readAt;
+  final DateTime createdAt;
+
+  AppNotification({
+    required this.id,
+    required this.userId,
+    required this.title,
+    required this.content,
+    required this.type,
+    this.readAt,
+    required this.createdAt,
+  });
+
+  factory AppNotification.fromJson(Map<String, dynamic> json) {
+    return AppNotification(
+      id: json['id'],
+      userId: json['user_id'],
+      title: json['title'] ?? '',
+      content: json['content'] ?? '',
+      type: json['type'] ?? 'info',
+      readAt: json['read_at'] != null ? DateTime.tryParse(json['read_at']) : null,
+      createdAt: json['created_at'] != null ? DateTime.parse(json['created_at']) : DateTime.now(),
+    );
+  }
+}
+
+class UserAppeal {
+  final int id;
+  final int userId;
+  final String? userName;
+  final String? userEmail;
+  final String? userRole;
+  final String message;
+  final String status; // 'pending', 'accepted', 'rejected'
+  final DateTime createdAt;
+
+  UserAppeal({
+    required this.id,
+    required this.userId,
+    this.userName,
+    this.userEmail,
+    this.userRole,
+    required this.message,
+    required this.status,
+    required this.createdAt,
+  });
+
+  factory UserAppeal.fromJson(Map<String, dynamic> json) {
+    final userMap = json['user'] as Map<String, dynamic>?;
+    return UserAppeal(
+      id: json['id'],
+      userId: json['user_id'],
+      userName: userMap != null ? "${userMap['prenom'] ?? ''} ${userMap['nom'] ?? ''}".trim() : 'Inconnu',
+      userEmail: userMap != null ? userMap['email'] : null,
+      userRole: userMap != null ? userMap['role'] : null,
+      message: json['message'] ?? '',
+      status: json['status'] ?? 'pending',
+      createdAt: json['created_at'] != null ? DateTime.parse(json['created_at']) : DateTime.now(),
+    );
+  }
 }

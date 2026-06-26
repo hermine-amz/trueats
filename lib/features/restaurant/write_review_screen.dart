@@ -25,6 +25,7 @@ class _WriteReviewScreenState extends State<WriteReviewScreen> {
   bool _isCheckingGps = true;
   bool _isNear = false;
   bool _isSubmitting = false;
+  bool _estAnonyme = false;
 
   @override
   void initState() {
@@ -131,6 +132,7 @@ class _WriteReviewScreenState extends State<WriteReviewScreen> {
         isVerified: _isNear,
         photos: null,
         authorName: user?.name ?? 'Utilisateur',
+        estAnonyme: _estAnonyme,
       );
 
       if (mounted) {
@@ -268,7 +270,42 @@ class _WriteReviewScreenState extends State<WriteReviewScreen> {
                               contentPadding: const EdgeInsets.all(16),
                             ),
                           ),
-                          const SizedBox(height: 32),
+                          const SizedBox(height: 16),
+                          Row(
+                            children: [
+                              SizedBox(
+                                height: 24,
+                                width: 24,
+                                child: Checkbox(
+                                  value: _estAnonyme,
+                                  activeColor: AppColors.terracotta,
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _estAnonyme = value ?? false;
+                                    });
+                                  },
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: GestureDetector(
+                                  onTap: () {
+                                    setState(() {
+                                      _estAnonyme = !_estAnonyme;
+                                    });
+                                  },
+                                  child: Text(
+                                    'Publier mon avis de façon anonyme',
+                                    style: textTheme.bodyMedium?.copyWith(
+                                      color: AppColors.marronFonce,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 24),
                           if (!_isNear)
                             Container(
                               width: double.infinity,

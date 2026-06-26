@@ -39,6 +39,11 @@ void showAppNotification(
   final overlay = Overlay.maybeOf(context);
   if (overlay == null) return;
 
+  String displayMessage = message;
+  if (displayMessage.startsWith('Exception: ')) {
+    displayMessage = displayMessage.substring(11);
+  }
+
   final topPadding = MediaQuery.of(context).padding.top;
 
   late final OverlayEntry entry;
@@ -55,7 +60,7 @@ void showAppNotification(
             child: Align(
               alignment: Alignment.topCenter,
               child: _AppNotificationWidget(
-                message: message,
+                message: displayMessage,
                 title: title,
                 type: type,
                 onDismiss: () {
@@ -216,69 +221,69 @@ Future<bool> showAppConfirmDialog(
       return Dialog(
         backgroundColor: AppColors.creme,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(22, 22, 22, 18),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    width: 46,
-                    height: 46,
-                    decoration: BoxDecoration(
-                      color: color.withValues(alpha: 0.12),
-                      shape: BoxShape.circle,
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(22, 22, 22, 18),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 46,
+                      height: 46,
+                      decoration: BoxDecoration(
+                        color: color.withValues(alpha: 0.12),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(icon, color: color, size: 24),
                     ),
-                    child: Icon(icon, color: color, size: 24),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          title,
-                          style: Theme.of(dialogContext)
-                              .textTheme
-                              .displaySmall
-                              ?.copyWith(fontSize: 20),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          message,
-                          style: Theme.of(dialogContext).textTheme.bodyMedium,
-                        ),
-                      ],
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            title,
+                            style: Theme.of(dialogContext)
+                                .textTheme
+                                .displaySmall
+                                ?.copyWith(fontSize: 20),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            message,
+                            style: Theme.of(dialogContext).textTheme.bodyMedium,
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 22),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
+                  ],
+                ),
+                const SizedBox(height: 22),
+                OverflowBar(
+                  alignment: MainAxisAlignment.end,
+                  spacing: 10,
+                  overflowSpacing: 10,
+                  children: [
+                    OutlinedButton(
                       onPressed: () => Navigator.of(dialogContext).pop(false),
-                      child: Text(cancelLabel),
+                      child: Text(cancelLabel, textAlign: TextAlign.center),
                     ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: ElevatedButton(
+                    ElevatedButton(
                       onPressed: () => Navigator.of(dialogContext).pop(true),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: color,
                         foregroundColor: Colors.white,
                       ),
-                      child: Text(confirmLabel),
+                      child: Text(confirmLabel, textAlign: TextAlign.center),
                     ),
-                  ),
-                ],
-              ),
-            ],
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       );

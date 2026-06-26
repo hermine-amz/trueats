@@ -335,7 +335,7 @@ class _ScanQrScreenState extends State<ScanQrScreen> {
               ),
               const SizedBox(height: 22),
               Text(
-                'Bienvenue $restaurantName',
+                restaurantName,
                 textAlign: TextAlign.center,
                 style: textTheme.displayLarge?.copyWith(
                   color: AppColors.terracotta,
@@ -439,6 +439,17 @@ class _ScanQrScreenState extends State<ScanQrScreen> {
                     return;
                   }
 
+                  // Vérification restriction d'avis
+                  if (_currentUser?.restrictionAvis == true) {
+                    showAppNotification(
+                      context,
+                      title: "Accès restreint",
+                      message: "Votre accès aux avis est suspendu. Contactez l'administrateur.",
+                      type: AppFeedbackType.warning,
+                    );
+                    return;
+                  }
+
                   if (restaurant == null) {
                     showAppNotification(
                       context,
@@ -489,7 +500,9 @@ class _ScanQrScreenState extends State<ScanQrScreen> {
                             Text(
                               'Donner mon avis',
                               style: textTheme.titleLarge?.copyWith(
-                                color: AppColors.marronFonce,
+                              color: _currentUser?.restrictionAvis == true
+                                  ? AppColors.grisTexte
+                                  : AppColors.marronFonce,
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
                               ),
@@ -498,7 +511,9 @@ class _ScanQrScreenState extends State<ScanQrScreen> {
                             Text(
                               isVisitor
                                   ? 'Réservé aux membres inscrits'
-                                  : 'Noter mon expérience',
+                                  : _currentUser?.restrictionAvis == true
+                                      ? 'Accès aux avis suspendu'
+                                      : 'Noter mon expérience',
                               style: textTheme.bodyMedium?.copyWith(
                                 color: AppColors.grisTexte,
                                 fontSize: 12,
@@ -507,7 +522,7 @@ class _ScanQrScreenState extends State<ScanQrScreen> {
                           ],
                         ),
                       ),
-                      if (isVisitor)
+                      if (isVisitor || _currentUser?.restrictionAvis == true)
                         const Icon(
                           Icons.lock_outline,
                           color: AppColors.grisTexte,

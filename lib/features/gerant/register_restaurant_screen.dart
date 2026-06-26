@@ -38,7 +38,7 @@ class _RegisterRestaurantScreenState extends State<RegisterRestaurantScreen> {
   final _typeCuisineController = TextEditingController();
   final _latitudeController = TextEditingController();
   final _longitudeController = TextEditingController();
-  final _superficieController = TextEditingController(text: '150');
+  final _superficieController = TextEditingController();
   // Champs textes pour IFU
   final _ifuNumeroController = TextEditingController();
 
@@ -146,7 +146,7 @@ class _RegisterRestaurantScreenState extends State<RegisterRestaurantScreen> {
       _typeCuisineController.text = r.typeCuisine;
       _latitudeController.text = r.latitude.toString();
       _longitudeController.text = r.longitude.toString();
-      _superficieController.text = (r.superficie ?? 150).toString();
+      _superficieController.text = r.superficie != null ? r.superficie.toString() : '';
       _ifuNumeroController.text = r.ifuNumero ?? '';
       
       if (r.cipUrl != null) {
@@ -453,13 +453,26 @@ class _RegisterRestaurantScreenState extends State<RegisterRestaurantScreen> {
 
     final latitude = double.tryParse(_latitudeController.text.trim());
     final longitude = double.tryParse(_longitudeController.text.trim());
-    final superficie = int.tryParse(_superficieController.text.trim());
+    
+    int? superficie;
+    if (_superficieController.text.trim().isNotEmpty) {
+      superficie = int.tryParse(_superficieController.text.trim());
+      if (superficie == null || superficie < 10) {
+        showAppNotification(
+          context,
+          title: 'Validation',
+          message: 'Superficie invalide (min 10 m²).',
+          type: AppFeedbackType.warning,
+        );
+        return;
+      }
+    }
 
-    if (latitude == null || longitude == null || superficie == null || superficie < 10) {
+    if (latitude == null || longitude == null) {
       showAppNotification(
         context,
         title: 'Validation',
-        message: 'Coordonnées GPS ou superficie invalides (min 10 m²).',
+        message: 'Coordonnées GPS invalides.',
         type: AppFeedbackType.warning,
       );
       return;
@@ -597,8 +610,6 @@ class _RegisterRestaurantScreenState extends State<RegisterRestaurantScreen> {
       cipUrl: cipUrl,
       ifuNumero: _ifuNumeroController.text.trim(),
       ifuAttestationUrl: ifuAttestationUrl,
-      rccmNumero: null,
-      rccmExtraitUrl: null,
       estValide: false, // creation en attente de validation
     );
 
@@ -971,16 +982,16 @@ class _RegisterRestaurantScreenState extends State<RegisterRestaurantScreen> {
                 const SizedBox(height: 16),
                 _buildTextField(
                   controller: _superficieController,
-                  label: 'Superficie (m²)',
+                  label: 'Superficie (m²) - Optionnel',
                   keyboardType: TextInputType.number,
-                  hintText: 'Ex: 150',
+                  hintText: 'Ex: 150 (laisser vide pour 100 m² par défaut)',
                   validator: (value) {
                     if (value == null || value.trim().isEmpty) {
-                      return 'Veuillez saisir la superficie.';
+                      return null;
                     }
                     final val = int.tryParse(value.trim());
                     if (val == null || val < 10) {
-                      return 'Veuillez saisir une superficie superieure a 10 m².';
+                      return 'Veuillez saisir une superficie supérieure à 10 m².';
                     }
                     return null;
                   },

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "668739091675",
+    "project_id": "trueats",
+    "storage_bucket": "trueats.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:668739091675:android:10a182ef275908b3da20fe",
+        "android_client_info": {
+          "package_name": "com.example.trueats"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB2WqUpFuqUhq8h_XwHvpLF1IjpOjDyxSU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -6,6 +6,7 @@ import '../../core/services/service_locator.dart';
 import '../../core/theme.dart';
 import '../../core/widgets/restaurant_logo.dart';
 import '../restaurant/restaurant_details_screen.dart';
+import '../notifications/notifications_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final VoidCallback? onProfileTap;
@@ -25,6 +26,20 @@ class _HomeScreenState extends State<HomeScreen> {
   String _query = "";
 
   String _selectedCategory = "Tous";
+  int _unreadCount = 0;
+
+  Future<void> _loadUnreadNotificationsCount() async {
+    try {
+      if (ServiceLocator.authService.currentUser != null) {
+        final list = await ServiceLocator.authService.getNotifications();
+        if (mounted) {
+          setState(() {
+            _unreadCount = list.where((n) => n.readAt == null).length;
+          });
+        }
+      }
+    } catch (_) {}
+  }
 
   /// Catégories disponibles construites dynamiquement depuis les restaurants chargés.
   List<String> get _categories {
@@ -45,6 +60,7 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     _currentUser = ServiceLocator.authService.currentUser;
     _loadRestaurants();
+    _loadUnreadNotificationsCount();
   }
 
   String _getAvatarAsset(String? role, String? sexe) {
@@ -187,6 +203,30 @@ class _HomeScreenState extends State<HomeScreen> {
                                 ),
                               ),
                             ),
+                            if (_currentUser != null)
+                              IconButton(
+                                icon: Badge(
+                                  isLabelVisible: _unreadCount > 0,
+                                  label: Text(
+                                    _unreadCount.toString(),
+                                    style: const TextStyle(color: Colors.white, fontSize: 9),
+                                  ),
+                                  backgroundColor: AppColors.rougeSignalement,
+                                  child: const Icon(
+                                    Icons.notifications_none_rounded,
+                                    color: Colors.white,
+                                    size: 26,
+                                  ),
+                                ),
+                                onPressed: () async {
+                                  await Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (context) => const NotificationsScreen(),
+                                    ),
+                                  );
+                                  _loadUnreadNotificationsCount();
+                                },
+                              ),
                           ],
                         ),
                         const SizedBox(height: 24),

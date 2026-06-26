@@ -1,0 +1,17 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "TrueAts Web (port fixe 50301)",
+      "request": "launch",
+      "type": "dart",
+      "args": [
+        "--web-port",
+        "50301",
+        "--web-renderer",
+        "canvaskit"
+      ],
+      "program": "lib/main.dart"
+    }
+  ]
+}

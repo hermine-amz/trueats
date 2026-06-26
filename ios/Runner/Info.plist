@@ -53,5 +53,7 @@
 	<string>Cette application nécessite l'accès à votre position pour vous montrer les restaurants les plus proches de vous et calculer votre distance.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 	<string>Cette application nécessite l'accès à votre position pour vous montrer les restaurants les plus proches de vous et calculer votre distance.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Cette application a besoin de votre permission pour sauvegarder le QR Code dans votre galerie de photos.</string>
 </dict>
 </plist>

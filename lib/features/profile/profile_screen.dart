@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/services/interfaces.dart';
 import '../../core/services/service_locator.dart';
@@ -7,9 +8,12 @@ import '../auth/login_screen.dart';
 import '../gerant/gerant_dashboard.dart';
 import '../gerant/register_restaurant_screen.dart';
 import '../admin/admin_console.dart';
+import '../../core/widgets/whatsapp_icon.dart';
 import '../../core/widgets/app_feedback.dart';
 import 'edit_profile_screen.dart';
+import 'my_reviews_screen.dart';
 import 'explorations_screen.dart';
+import 'delete_account_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -40,7 +44,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       final user = ServiceLocator.authService.currentUser;
       final lists = await ServiceLocator.restaurantService.getExplorationLists();
-      final reviews = await ServiceLocator.reviewService.getAllReviews();
+      final reviews = user == null || user.role == 'visiteur'
+          ? <Avis>[]
+          : await ServiceLocator.reviewService.getReviewsByUser(user.id);
       final managedRestaurants = user == null || user.role == 'visiteur'
           ? <Restaurant>[]
           : await ServiceLocator.restaurantService.getRestaurantsByManager(
@@ -64,7 +70,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ? 0
             : reviews
                   .where(
-                    (review) => review.nomAuteur == user.name && review.estPublie,
+                    (review) => review.estPublie,
                   )
                   .length;
         _isLoading = false;
@@ -84,6 +90,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _isExploreList(ExplorationList list) {
     final normalized = list.nom.toLowerCase().trim();
     return normalized == 'a explorer' || normalized == 'à explorer';
+  }
+
+  void _onMesAvisTap() {
+    if (_currentUser == null) return;
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => MyReviewsScreen(userId: _currentUser!.id),
+      ),
+    );
   }
 
   Future<void> _onExplorationsTap() async {
@@ -110,6 +125,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _logout() async {
+    final confirmed = await showAppConfirmDialog(
+      context,
+      title: "Déconnexion ?",
+      message: "Êtes-vous sûr de vouloir vous déconnecter de votre compte TruEats ?",
+      confirmLabel: "Déconnecter",
+      icon: Icons.logout_rounded,
+      type: AppFeedbackType.warning,
+    );
+    if (!confirmed) return;
+
     await ServiceLocator.authService.logout();
     if (!mounted) return;
 
@@ -129,89 +154,56 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
       builder: (context) {
         return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(24, 18, 24, 24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  "Parametres",
-                  style: Theme.of(context).textTheme.displaySmall,
-                ),
-                const SizedBox(height: 12),
-                _buildSettingsTile(
-                  context,
-                  icon: Icons.edit_outlined,
-                  title: "Editer profil",
-                  subtitle: "Nom, prenom, email, sexe et numero",
-                  onTap: user == null
-                      ? null
-                      : () async {
-                          Navigator.of(context).pop();
-                          final updated = await Navigator.of(context)
-                              .push<bool>(
-                                MaterialPageRoute(
-                                  builder: (context) =>
-                                      EditProfileScreen(user: user),
-                                ),
-                              );
-                          if (updated == true) {
-                            _loadProfile();
-                          }
-                        },
-                ),
-
-                if (user != null)
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(24, 18, 24, 24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "Parametres",
+                    style: Theme.of(context).textTheme.displaySmall,
+                  ),
+                  const SizedBox(height: 12),
                   _buildSettingsTile(
                     context,
-                    icon: Icons.delete_forever_outlined,
-                    title: "Supprimer mon compte",
-                    subtitle: "Suppression définitive et immédiate",
-                    onTap: () async {
-                      Navigator.of(context).pop();
-                      final confirmed = await showAppConfirmDialog(
-                        context,
-                        title: "Supprimer mon compte ?",
-                        message: "Cette action est irréversible. Toutes vos données seront définitivement supprimées.",
-                        confirmLabel: "Supprimer",
-                        cancelLabel: "Annuler",
-                        icon: Icons.delete_forever_outlined,
-                        type: AppFeedbackType.error,
-                      );
-                      if (confirmed == true) {
-                        setState(() {
-                          _isLoading = true;
-                        });
-                        try {
-                          await ServiceLocator.authService.deleteAccount();
-                          if (!context.mounted) return;
-                          showAppNotification(
-                            context,
-                            title: "Compte supprimé",
-                            message: "Votre compte a été définitivement supprimé.",
-                            type: AppFeedbackType.success,
-                          );
-                          Navigator.of(context).pushAndRemoveUntil(
-                            MaterialPageRoute(builder: (_) => const LoginScreen()),
-                            (route) => false,
-                          );
-                        } catch (e) {
-                          if (!context.mounted) return;
-                          setState(() {
-                            _isLoading = false;
-                          });
-                          showAppNotification(
-                            context,
-                            title: "Erreur",
-                            message: "Impossible de supprimer le compte : $e",
-                            type: AppFeedbackType.error,
-                          );
-                        }
-                      }
-                    },
+                    icon: Icons.edit_outlined,
+                    title: "Editer profil",
+                    subtitle: "Nom, prenom, email, sexe et numero",
+                    onTap: user == null
+                        ? null
+                        : () async {
+                            Navigator.of(context).pop();
+                            final updated = await Navigator.of(context)
+                                .push<bool>(
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        EditProfileScreen(user: user),
+                                  ),
+                                );
+                            if (updated == true) {
+                              _loadProfile();
+                            }
+                          },
                   ),
-              ],
+                  if (user != null)
+                    _buildSettingsTile(
+                      context,
+                      icon: Icons.delete_forever_outlined,
+                      title: "Supprimer mon compte",
+                      subtitle: "Suppression définitive et sécurisée",
+                      onTap: () {
+                        Navigator.of(context).pop();
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) => const DeleteAccountScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                ],
+              ),
             ),
           ),
         );
@@ -373,7 +365,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               : "$_exploreCount restaurant${_exploreCount > 1 ? 's' : ''} ajoute${_exploreCount > 1 ? 's' : ''}",
                           _onExplorationsTap,
                         ),
-                        const SizedBox(height: 18),
+                        const SizedBox(height: 14),
+                        _buildActivityRow(
+                          context,
+                          Icons.star_outline_rounded,
+                          "Mes Avis",
+                          "Consulter les avis que vous avez déposés",
+                          _onMesAvisTap,
+                        ),
+                        const SizedBox(height: 14),
                         if (_currentUser?.role == 'admin') ...[
                           _buildActivityRow(
                             context,
@@ -390,31 +390,30 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             },
                           ),
                           const SizedBox(height: 36),
-                        ] else if (_currentUser?.role == 'gerant') ...[
-                          _buildActivityRow(
-                            context,
-                            Icons.storefront_outlined,
-                            "Gestion restaurants",
-                            "Voir mes etablissements",
-                            _onGestionRestaurantsTap,
-                          ),
+                        ] else ...[
+                          if (_currentUser?.role == 'gerant' || (_currentUser?.role == 'utilisateur' && _pendingRestaurants.isNotEmpty)) ...[
+                            _buildActivityRow(
+                              context,
+                              Icons.storefront_outlined,
+                              "Gestion restaurants",
+                              "Voir mes etablissements",
+                              _onGestionRestaurantsTap,
+                            ),
+                            const SizedBox(height: 14),
+                            _buildActivityRow(
+                              context,
+                              Icons.add_business_outlined,
+                              "Inscription restaurant",
+                              "Ajouter un nouveau restaurant",
+                              _onInscriptionRestaurantTap,
+                            ),
+                          ] else if (_currentUser?.role == 'utilisateur' && _pendingRestaurants.isEmpty) ...[
+                            _buildBecomeGerantBanner(context),
+                          ],
                           const SizedBox(height: 14),
-                          _buildActivityRow(
-                            context,
-                            Icons.add_business_outlined,
-                            "Inscription restaurant",
-                            "Ajouter un nouveau restaurant",
-                            _onInscriptionRestaurantTap,
-                          ),
+                          _buildWhatsAppRow(context),
                           const SizedBox(height: 36),
-                        ] else if (_currentUser?.role == 'utilisateur') ...[
-                          if (_pendingRestaurants.isEmpty)
-                            _buildBecomeGerantBanner(context)
-                          else
-                            _buildPendingRestaurantBanner(context),
-                          const SizedBox(height: 36),
-                        ] else
-                          const SizedBox(height: 36),
+                        ],
                         if (!isVisitor)
                           SizedBox(
                             width: double.infinity,
@@ -608,7 +607,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    "Proposer mon restaurant",
+                    "Inscrire mon restaurant",
                     style: textTheme.titleLarge?.copyWith(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
@@ -617,7 +616,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    "Soumettez votre etablissement pour validation. Votre compte passera gerant apres accord admin.",
+                    "Inscrivez votre etablissement et préparez votre menu. Votre compte passera gérant après validation de l'admin.",
                     style: textTheme.bodyMedium?.copyWith(
                       fontSize: 12,
                       color: AppColors.grisTexte,
@@ -638,65 +637,84 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildPendingRestaurantBanner(BuildContext context) {
+
+  Future<void> _launchWhatsApp(BuildContext context, String message) async {
+    final encodedMessage = Uri.encodeComponent(message);
+    final url = "https://wa.me/22991566846?text=$encodedMessage";
+    final uri = Uri.parse(url);
+    try {
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        if (context.mounted) {
+          showAppNotification(
+            context,
+            title: "Erreur",
+            message: "Impossible d'ouvrir WhatsApp.",
+            type: AppFeedbackType.error,
+          );
+        }
+      }
+    } catch (e) {
+      if (context.mounted) {
+        showAppNotification(
+          context,
+          title: "Erreur",
+          message: "Impossible de lancer le lien WhatsApp : $e",
+          type: AppFeedbackType.error,
+        );
+      }
+    }
+  }
+
+  Widget _buildWhatsAppRow(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
-    final count = _pendingRestaurants.length;
-    final firstRestaurant = _pendingRestaurants.first;
 
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: const Color(0xFFFDFBF7),
+      decoration: _cardDecoration(),
+      child: InkWell(
+        onTap: () {
+          final user = _currentUser;
+          final roleLabel = user != null ? _getRoleLabel(user.role).toLowerCase() : "visiteur";
+          final name = user?.name ?? "Visiteur";
+          final msg = "Bonjour TruEats, je suis $name (compte $roleLabel) et j'aimerais avoir de l'aide concernant l'application.";
+          _launchWhatsApp(context, msg);
+        },
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.grisBordure),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 52,
-            height: 52,
-            decoration: const BoxDecoration(
-              color: AppColors.cremeFonce,
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.hourglass_top_outlined,
-              color: AppColors.terracotta,
-              size: 26,
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  count == 1
-                      ? "Demande en attente"
-                      : "$count demandes en attente",
-                  style: textTheme.titleLarge?.copyWith(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.marronFonce,
-                  ),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              const WhatsAppIcon(size: 42),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "Contact WhatsApp",
+                      style: textTheme.titleLarge?.copyWith(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      "Une question ? Discutez avec le support",
+                      style: textTheme.bodyMedium?.copyWith(fontSize: 12),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  count == 1
-                      ? "${firstRestaurant.nom} est en cours de validation par l admin."
-                      : "Vos restaurants soumis sont en cours de validation par l admin.",
-                  style: textTheme.bodyMedium?.copyWith(
-                    fontSize: 12,
-                    color: AppColors.grisTexte,
-                  ),
-                ),
-              ],
-            ),
+              ),
+              const Icon(
+                Icons.chevron_right,
+                color: AppColors.grisTexte,
+                size: 20,
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
-
 }

@@ -47,7 +47,7 @@ class Plat {
       nom: json['nom'] ?? '',
       description: json['description'] ?? '',
       prix: (json['prix'] as num?)?.toDouble() ?? 0.0,
-      disponible: json['disponible'] == 1 || json['disponible'] == true || (json['disponible'] ?? true),
+      disponible: json['disponible'] == 1 || json['disponible'] == true || json['disponible'] == null,
       categorie: categoryName,
       imageUrl: json['image_url'],
     );
@@ -99,6 +99,8 @@ class Avis {
   final String? photoUrl;
   final int restaurantId;
   final String restaurantNom;
+  final bool estAnonyme;
+  final int? userId;
 
   Avis({
     required this.id,
@@ -113,6 +115,8 @@ class Avis {
     this.photoUrl,
     required this.restaurantId,
     required this.restaurantNom,
+    this.estAnonyme = false,
+    this.userId,
   });
 
   factory Avis.fromJson(Map<String, dynamic> json) {
@@ -133,22 +137,25 @@ class Avis {
 
     final lat = (json['lat_client'] as num?)?.toDouble() ?? 0.0;
     final lon = (json['long_client'] as num?)?.toDouble() ?? 0.0;
+    final estAnonymeVal = json['est_anonyme'] == 1 || json['est_anonyme'] == true;
 
     return Avis(
-      id: json['id'],
-      nomAuteur: authorName,
-      note: json['note'] ?? 5,
-      commentaire: json['commentaire'] ?? '',
+      id: json['id'] as int? ?? 0,
+      nomAuteur: estAnonymeVal ? 'Anonyme' : authorName,
+      note: json['note'] as int? ?? 5,
+      commentaire: json['commentaire'] as String? ?? '',
       dateVisite: json['date_visite'] != null
           ? DateTime.parse(json['date_visite'])
           : (json['created_at'] != null ? DateTime.parse(json['created_at']) : DateTime.now()),
       latClient: lat,
       longClient: lon,
-      estPublie: json['est_publie'] == 1 || json['est_publie'] == true || (json['est_publie'] ?? true),
+      estPublie: json['est_publie'] == 1 || json['est_publie'] == true || json['est_publie'] == null,
       isVerified: lat != 0.0 && lon != 0.0,
-      photoUrl: json['photo_url'],
-      restaurantId: json['restaurant_id'],
-      restaurantNom: restaurantJson != null ? (restaurantJson['nom'] ?? 'Restaurant') : (json['restaurant_nom'] ?? 'Restaurant'),
+      photoUrl: json['photo_url'] as String?,
+      restaurantId: json['restaurant_id'] as int? ?? (restaurantJson?['id'] as int? ?? 0),
+      restaurantNom: restaurantJson != null ? (restaurantJson['nom'] as String? ?? 'Restaurant') : (json['restaurant_nom'] as String? ?? 'Restaurant'),
+      estAnonyme: estAnonymeVal,
+      userId: userJson != null ? userJson['id'] as int? : json['user_id'] as int?,
     );
   }
 
@@ -162,6 +169,8 @@ class Avis {
       'long_client': longClient,
       'est_publie': estPublie,
       'restaurant_id': restaurantId,
+      'est_anonyme': estAnonyme,
+      'user_id': userId,
     };
   }
 
@@ -178,6 +187,8 @@ class Avis {
     String? photoUrl,
     int? restaurantId,
     String? restaurantNom,
+    bool? estAnonyme,
+    int? userId,
   }) {
     return Avis(
       id: id ?? this.id,
@@ -192,6 +203,8 @@ class Avis {
       photoUrl: photoUrl ?? this.photoUrl,
       restaurantId: restaurantId ?? this.restaurantId,
       restaurantNom: restaurantNom ?? this.restaurantNom,
+      estAnonyme: estAnonyme ?? this.estAnonyme,
+      userId: userId ?? this.userId,
     );
   }
 }
@@ -221,8 +234,6 @@ class Restaurant {
   final String? cipUrl;
   final String? ifuNumero;
   final String? ifuAttestationUrl;
-  final String? rccmNumero;
-  final String? rccmExtraitUrl;
   // Motif de rejet de validation (null si non rejeté)
   final String? motifRejet;
   final bool estArchive;
@@ -250,8 +261,6 @@ class Restaurant {
     this.cipUrl,
     this.ifuNumero,
     this.ifuAttestationUrl,
-    this.rccmNumero,
-    this.rccmExtraitUrl,
     this.motifRejet,
     this.estArchive = false,
   });
@@ -287,8 +296,6 @@ class Restaurant {
       cipUrl: json['cip_url'],
       ifuNumero: json['ifu_numero'],
       ifuAttestationUrl: json['ifu_attestation_url'],
-      rccmNumero: json['rccm_numero'],
-      rccmExtraitUrl: json['rccm_extrait_url'],
       motifRejet: json['motif_rejet'],
       estArchive: json['est_archive'] == 1 || json['est_archive'] == true,
     );
@@ -339,8 +346,6 @@ class Restaurant {
     String? cipUrl,
     String? ifuNumero,
     String? ifuAttestationUrl,
-    String? rccmNumero,
-    String? rccmExtraitUrl,
     String? motifRejet,
     bool? estArchive,
   }) {
@@ -367,8 +372,6 @@ class Restaurant {
       cipUrl: cipUrl ?? this.cipUrl,
       ifuNumero: ifuNumero ?? this.ifuNumero,
       ifuAttestationUrl: ifuAttestationUrl ?? this.ifuAttestationUrl,
-      rccmNumero: rccmNumero ?? this.rccmNumero,
-      rccmExtraitUrl: rccmExtraitUrl ?? this.rccmExtraitUrl,
       motifRejet: motifRejet ?? this.motifRejet,
       estArchive: estArchive ?? this.estArchive,
     );
@@ -390,8 +393,6 @@ class DemandeRestaurant {
   final String? cipUrl;
   final String? ifuNumero;
   final String? ifuAttestationUrl;
-  final String? rccmNumero;
-  final String? rccmExtraitUrl;
   final Map<String, dynamic>? gerant;
   final bool estValide;
   final String? motifRejet;
@@ -410,8 +411,6 @@ class DemandeRestaurant {
     this.cipUrl,
     this.ifuNumero,
     this.ifuAttestationUrl,
-    this.rccmNumero,
-    this.rccmExtraitUrl,
     this.gerant,
     this.estValide = false,
     this.motifRejet,
@@ -432,10 +431,8 @@ class DemandeRestaurant {
       cipUrl: json['cip_url'],
       ifuNumero: json['ifu_numero'],
       ifuAttestationUrl: json['ifu_attestation_url'],
-      rccmNumero: json['rccm_numero'],
-      rccmExtraitUrl: json['rccm_extrait_url'],
       gerant: json['gerant'] as Map<String, dynamic>?,
-      estValide: json['est_valide'] == 1 || json['est_valide'] == true || (json['est_valide'] ?? false),
+      estValide: json['est_valide'] == 1 || json['est_valide'] == true,
       motifRejet: json['motif_rejet'],
     );
   }
@@ -467,7 +464,7 @@ class ExplorationList {
       id: json['id'] ?? 0,
       nom: json['nom'] ?? 'À explorer',
       adresses: list,
-      isShared: json['is_shared'] == 1 || json['is_shared'] == true || (json['is_shared'] ?? false),
+      isShared: json['is_shared'] == 1 || json['is_shared'] == true,
       iconTypes: json['icon_types'] != null ? List<String>.from(json['icon_types']) : ['⭐'],
     );
   }
@@ -535,7 +532,7 @@ class Signalement {
       auteurSignalement: authorName,
       raison: json['libelle'] ?? 'Contenu inopportun',
       dateSignalement: json['created_at'] != null ? DateTime.parse(json['created_at']) : DateTime.now(),
-      estTraite: json['est_traite'] == 1 || json['est_traite'] == true || (json['est_traite'] ?? false),
+      estTraite: json['est_traite'] == 1 || json['est_traite'] == true,
       decision: json['decision'],
     );
   }
@@ -702,7 +699,7 @@ class MockData {
   static final List<Avis> initialAvis = [
     Avis(
       id: 101,
-      nomAuteur: "Marie L.",
+      nomAuteur: "Sophie Client",
       note: 4,
       commentaire:
           "Le poulet braisé était parfaitement assaisonné, l'attiéké fondant. Service rapide, ambiance conviviale...",
@@ -713,10 +710,11 @@ class MockData {
       isVerified: true,
       restaurantId: 1,
       restaurantNom: "Maquis Chez Tanti",
+      userId: 1,
     ),
     Avis(
       id: 102,
-      nomAuteur: "Léa M.",
+      nomAuteur: "Marc Client",
       note: 5,
       commentaire:
           "Cuisine généreuse, service impeccable. On s'y sent comme à la maison. L'attiéké est incroyable !",
@@ -727,10 +725,11 @@ class MockData {
       isVerified: true,
       restaurantId: 1,
       restaurantNom: "Maquis Chez Tanti",
+      userId: 2,
     ),
     Avis(
       id: 103,
-      nomAuteur: "Thomas R.",
+      nomAuteur: "Afi Client",
       note: 4,
       commentaire:
           "Très bon rapport qualité-prix. Les jus de bissap sont délicieux. Le service peut être un peu lent aux heures de pointe.",
@@ -741,6 +740,7 @@ class MockData {
       isVerified: true,
       restaurantId: 2,
       restaurantNom: "Le Petit Bissap",
+      userId: 3,
     ),
     Avis(
       id: 104,
@@ -755,6 +755,7 @@ class MockData {
       isVerified: true,
       restaurantId: 3,
       restaurantNom: "Chez Marcel",
+      userId: null,
     ),
   ];
 

@@ -1,0 +1,3 @@
+@echo off
+echo Demarrage TrueAts Web sur http://localhost:50301 ...
+flutter run -d chrome --web-port 50301

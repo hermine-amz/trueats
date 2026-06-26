@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import '../../core/services/interfaces.dart';
 import '../../core/services/service_locator.dart';
 import '../../core/theme.dart';
 import '../../core/widgets/app_feedback.dart';
 import '../navigation/main_navigation.dart';
+import 'account_sanction_screen.dart';
 import 'register_screen.dart';
 import 'reset_password_screen.dart';
 
@@ -27,28 +29,6 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  Widget _buildQuickLoginButton(String label, String email) {
-    return ActionChip(
-      label: Text(label),
-      backgroundColor: AppColors.creme,
-      labelStyle: const TextStyle(
-        color: AppColors.terracotta,
-        fontWeight: FontWeight.bold,
-        fontSize: 12,
-      ),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-        side: const BorderSide(color: AppColors.terracotta, width: 1),
-      ),
-      onPressed: () {
-        setState(() {
-          _emailController.text = email;
-          _passwordController.text = "password";
-        });
-      },
-    );
-  }
-
   Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -64,6 +44,21 @@ class _LoginScreenState extends State<LoginScreen> {
       if (success && mounted) {
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (context) => const MainNavigation()),
+        );
+      }
+    } on BlockedAccountException catch (e) {
+      if (mounted) {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => AccountSanctionScreen(
+              message: e.message,
+              motif: e.motif,
+              bloqueJusqua: e.bloqueJusqua,
+              isPermanent: e.isPermanent,
+              email: e.email ?? email,
+              userId: e.userId,
+            ),
+          ),
         );
       }
     } catch (e) {
@@ -145,12 +140,17 @@ class _LoginScreenState extends State<LoginScreen> {
                         textInputAction: TextInputAction.next,
                         decoration: const InputDecoration(
                           labelText: "Adresse e-mail",
-                          hintText: "client@trueats.com ou tanti@trueats.com",
+                          hintText: "Veuillez entrer votre e-mail",
                           prefixIcon: Icon(Icons.email_outlined),
                         ),
                         validator: (value) {
                           if (value == null || value.trim().isEmpty) {
                             return "Veuillez entrer votre e-mail";
+                          }
+                          if (!RegExp(
+                            r'^[\w\.-]+@([\w-]+\.)+[\w-]{2,4}$',
+                          ).hasMatch(value.trim())) {
+                            return "Veuillez entrer une adresse e-mail valide";
                           }
                           return null;
                         },
@@ -218,45 +218,6 @@ class _LoginScreenState extends State<LoginScreen> {
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
-                      ),
-
-                      const SizedBox(height: 20),
-
-                      // Helper Card for login credentials
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        width: double.infinity,
-                        decoration: BoxDecoration(
-                          color: AppColors.cremeFonce,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: AppColors.grisBordure),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              "Comptes de test (Cliquez pour remplir) :",
-                              style: textTheme.labelLarge?.copyWith(
-                                color: AppColors.marronFonce,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 13,
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            Wrap(
-                              spacing: 8,
-                              runSpacing: 8,
-                              children: [
-                                _buildQuickLoginButton("Client (Sophie)", "client@trueats.com"),
-                                _buildQuickLoginButton("Client (Marc)", "client2@trueats.com"),
-                                _buildQuickLoginButton("Client (Afi)", "client3@trueats.com"),
-                                _buildQuickLoginButton("Tanti (Gérant)", "tanti@trueats.com"),
-                                _buildQuickLoginButton("Bissap (Gérant)", "bissap@trueats.com"),
-                                _buildQuickLoginButton("Admin", "admin@trueats.com"),
-                              ],
-                            ),
-                          ],
-                        ),
                       ),
 
                       const SizedBox(height: 24),

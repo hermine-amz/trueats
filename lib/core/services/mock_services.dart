@@ -2,14 +2,15 @@ import 'dart:async';
 import 'dart:math';
 
 import 'interfaces.dart';
+import 'service_locator.dart';
 
 class MockAuthService implements AuthService {
   final List<User> _users = [
     User(
       id: 1,
-      prenom: "Marie",
-      nom: "L.",
-      email: "marie@exemple.fr",
+      prenom: "Sophie",
+      nom: "Client",
+      email: "client@trueats.com",
       role: "utilisateur",
       sexe: "Féminin",
       dateInscription: DateTime(2026, 3, 8),
@@ -17,19 +18,49 @@ class MockAuthService implements AuthService {
     ),
     User(
       id: 2,
-      prenom: "Marcel",
-      nom: "K.",
-      email: "marcel@exemple.fr",
-      role: "gerant",
+      prenom: "Marc",
+      nom: "Client",
+      email: "client2@trueats.com",
+      role: "utilisateur",
       sexe: "Masculin",
       dateInscription: DateTime(2025, 11, 20),
       dateMaj: DateTime(2026, 6, 10),
     ),
     User(
       id: 3,
-      prenom: "Administrateur",
+      prenom: "Afi",
+      nom: "Client",
+      email: "client3@trueats.com",
+      role: "utilisateur",
+      sexe: "Féminin",
+      dateInscription: DateTime(2025, 12, 10),
+      dateMaj: DateTime(2026, 6, 10),
+    ),
+    User(
+      id: 4,
+      prenom: "Tanti",
+      nom: "Gérant",
+      email: "tanti@trueats.com",
+      role: "gerant",
+      sexe: "Féminin",
+      dateInscription: DateTime(2025, 1, 1),
+      dateMaj: DateTime(2026, 6, 12),
+    ),
+    User(
+      id: 5,
+      prenom: "Bissap",
+      nom: "Gérant",
+      email: "bissap@trueats.com",
+      role: "gerant",
+      sexe: "Masculin",
+      dateInscription: DateTime(2025, 2, 1),
+      dateMaj: DateTime(2026, 6, 12),
+    ),
+    User(
+      id: 6,
+      prenom: "Admin",
       nom: "TruEats",
-      email: "admin@trueats.bj",
+      email: "admin@trueats.com",
       role: "admin",
       sexe: "Masculin",
       dateInscription: DateTime(2025, 1, 1),
@@ -39,6 +70,8 @@ class MockAuthService implements AuthService {
 
   late User? _currentUser = _users.first;
   final _authController = StreamController<User?>.broadcast();
+  final List<AppNotification> _notifications = [];
+  final List<UserAppeal> _appeals = [];
 
   MockAuthService() {
     _authController.add(_currentUser);
@@ -58,13 +91,9 @@ class MockAuthService implements AuthService {
     await Future.delayed(const Duration(milliseconds: 600));
 
     final emailLower = email.toLowerCase().trim();
-    if (emailLower == 'marie@exemple.fr' || emailLower == 'marie') {
-      _currentUser = _users.firstWhere((user) => user.id == 1);
-    } else if (emailLower == 'marcel@exemple.fr' || emailLower == 'marcel') {
-      _currentUser = _users.firstWhere((user) => user.id == 2);
-    } else if (emailLower == 'admin@trueats.bj' || emailLower == 'admin') {
-      _currentUser = _users.firstWhere((user) => user.id == 3);
-    } else {
+    try {
+      _currentUser = _users.firstWhere((user) => user.email.toLowerCase() == emailLower);
+    } catch (e) {
       _currentUser = User(
         id: Random().nextInt(1000) + 10,
         prenom: email.split('@').first,
@@ -151,7 +180,14 @@ class MockAuthService implements AuthService {
   }
 
   @override
-  Future<void> setAccountActive(int userId, bool isActive, {int? dureeJours}) async {
+  Future<void> setAccountActive(
+    int userId,
+    bool isActive, {
+    int? dureeJours,
+    String? motif,
+    bool? restrictionAvis,
+    bool? restrictionGerant,
+  }) async {
     await Future.delayed(const Duration(milliseconds: 250));
     final index = _users.indexWhere((user) => user.id == userId);
     if (index == -1) {
@@ -162,6 +198,8 @@ class MockAuthService implements AuthService {
     final updatedUser = _users[index].copyWith(
       isActive: isActive,
       bloqueJusqua: dateSuspension,
+      restrictionAvis: restrictionAvis ?? false,
+      restrictionGerant: restrictionGerant ?? false,
       dateMaj: DateTime.now(),
     );
     _users[index] = updatedUser;
@@ -170,6 +208,22 @@ class MockAuthService implements AuthService {
       _currentUser = updatedUser;
       _authController.add(_currentUser);
     }
+
+    final String title = isActive ? 'Compte réactivé' : 'Avis de sanction';
+    final String content = isActive 
+        ? 'Votre compte a été réactivé. Toutes les restrictions de connexion et d\'actions ont été levées.'
+        : (dureeJours != null 
+            ? "Votre compte a été suspendu pour $dureeJours jours. Motif: ${motif ?? 'Non renseigné'}."
+            : "Votre compte a été désactivé de façon permanente. Motif: ${motif ?? 'Non renseigné'}.");
+    
+    _notifications.add(AppNotification(
+      id: _notifications.length + 1,
+      userId: userId,
+      title: title,
+      content: content,
+      type: isActive ? 'info' : 'sanction',
+      createdAt: DateTime.now(),
+    ));
   }
 
   @override
@@ -179,6 +233,162 @@ class MockAuthService implements AuthService {
       _users.removeWhere((user) => user.id == _currentUser!.id);
       _currentUser = null;
       _authController.add(null);
+    }
+  }
+
+  @override
+  Future<void> requestAccountDeletion({required String email, required String reason, String? comment}) async {
+    await Future.delayed(const Duration(milliseconds: 300));
+  }
+
+  @override
+  Future<void> confirmAccountDeletion({required String code}) async {
+    await Future.delayed(const Duration(milliseconds: 300));
+    await deleteAccount();
+  }
+
+  @override
+  Future<void> sendForgotPasswordCode({required String email}) async {
+    await Future.delayed(const Duration(milliseconds: 300));
+    final emailLower = email.toLowerCase().trim();
+    final userExists = _users.any((u) => u.email.toLowerCase() == emailLower);
+    if (!userExists) {
+      throw Exception('Cette adresse e-mail ne correspond à aucun compte.');
+    }
+  }
+
+  @override
+  Future<void> verifyForgotPasswordCode({required String email, required String code}) async {
+    await Future.delayed(const Duration(milliseconds: 300));
+    if (code.trim() != '123456') {
+      throw Exception('Le code de vérification saisi est incorrect.');
+    }
+  }
+
+  @override
+  Future<void> resetPassword({required String email, required String code, required String password}) async {
+    await Future.delayed(const Duration(milliseconds: 300));
+    final emailLower = email.toLowerCase().trim();
+    final index = _users.indexWhere((u) => u.email.toLowerCase() == emailLower);
+    if (index != -1) {
+      // Pour le mock, on simule simplement le succès
+    }
+  }
+
+  @override
+  Future<List<AppNotification>> getNotifications() async {
+    await Future.delayed(const Duration(milliseconds: 150));
+    final userId = _currentUser?.id;
+    if (userId == null) return [];
+    return _notifications.where((n) => n.userId == userId).toList();
+  }
+
+  @override
+  Future<void> markNotificationRead(int id) async {
+    await Future.delayed(const Duration(milliseconds: 100));
+    final index = _notifications.indexWhere((n) => n.id == id);
+    if (index != -1) {
+      final n = _notifications[index];
+      _notifications[index] = AppNotification(
+        id: n.id,
+        userId: n.userId,
+        title: n.title,
+        content: n.content,
+        type: n.type,
+        readAt: DateTime.now(),
+        createdAt: n.createdAt,
+      );
+    }
+  }
+
+  @override
+  Future<void> submitAppeal({required String message, String? email, String? password}) async {
+    await Future.delayed(const Duration(milliseconds: 300));
+    int userId = _currentUser?.id ?? 0;
+    if (userId == 0 && email != null) {
+      try {
+        final targetUser = _users.firstWhere((u) => u.email.toLowerCase() == email.toLowerCase().trim());
+        userId = targetUser.id;
+      } catch (_) {}
+    }
+    _appeals.add(UserAppeal(
+      id: _appeals.length + 1,
+      userId: userId,
+      userName: _currentUser?.name ?? email?.split('@').first ?? 'Utilisateur',
+      userEmail: _currentUser?.email ?? email,
+      userRole: _currentUser?.role ?? 'utilisateur',
+      message: message,
+      status: 'pending',
+      createdAt: DateTime.now(),
+    ));
+
+    _notifications.add(AppNotification(
+      id: _notifications.length + 1,
+      userId: userId,
+      title: 'Recours enregistré',
+      content: 'Votre recours a bien été soumis et est en cours d\'examen par l\'administrateur.',
+      type: 'info',
+      createdAt: DateTime.now(),
+    ));
+  }
+
+  @override
+  Future<List<UserAppeal>> getAppeals() async {
+    await Future.delayed(const Duration(milliseconds: 150));
+    return _appeals.where((a) => a.status == 'pending').toList();
+  }
+
+  @override
+  Future<void> processAppeal(int appealId, {required bool accept}) async {
+    await Future.delayed(const Duration(milliseconds: 200));
+    final index = _appeals.indexWhere((a) => a.id == appealId);
+    if (index != -1) {
+      final appeal = _appeals[index];
+      final newStatus = accept ? 'accepted' : 'rejected';
+      _appeals[index] = UserAppeal(
+        id: appeal.id,
+        userId: appeal.userId,
+        userName: appeal.userName,
+        userEmail: appeal.userEmail,
+        userRole: appeal.userRole,
+        message: appeal.message,
+        status: newStatus,
+        createdAt: appeal.createdAt,
+      );
+
+      final userIndex = _users.indexWhere((u) => u.id == appeal.userId);
+      if (userIndex != -1) {
+        if (accept) {
+          _users[userIndex] = _users[userIndex].copyWith(
+            isActive: true,
+            bloqueJusqua: null,
+            restrictionAvis: false,
+            restrictionGerant: false,
+          );
+          if (_currentUser?.id == appeal.userId) {
+            _currentUser = _users[userIndex];
+            _authController.add(_currentUser);
+          }
+
+          _notifications.add(AppNotification(
+            id: _notifications.length + 1,
+            userId: appeal.userId,
+            title: 'Recours approuvé !',
+            content: 'Votre recours a été approuvé. Les restrictions sur votre compte ont été levées et vos accès sont pleinement rétablis.',
+            type: 'sanction_lifted',
+            createdAt: DateTime.now(),
+          ));
+        } else {
+          _notifications.add(AppNotification(
+            id: _notifications.length + 1,
+            userId: appeal.userId,
+            title: 'Recours rejeté',
+            content: 'Votre recours a été examiné et rejeté par l\'administrateur. Les sanctions de votre compte restent actives.',
+            type: 'sanction',
+            createdAt: DateTime.now(),
+          ));
+        }
+      }
     }
   }
 
@@ -196,7 +406,7 @@ class MockAuthService implements AuthService {
     } else if (role == 'gerant') {
       _currentUser = _users.firstWhere((user) => user.id == 2);
     } else if (role == 'admin') {
-      _currentUser = _users.firstWhere((user) => user.id == 3);
+      _currentUser = _users.firstWhere((user) => user.id == 6);
     }
     _authController.add(_currentUser);
   }
@@ -515,6 +725,14 @@ class MockReviewService implements ReviewService {
   }
 
   @override
+
+  @override
+  Future<List<Avis>> getReviewsByUser(int userId) async {
+    await Future.delayed(const Duration(milliseconds: 150));
+    return _avisList.where((avis) => avis.userId == userId).toList();
+  }
+
+  @override
   Future<List<Avis>> getAllReviews() async {
     await Future.delayed(const Duration(milliseconds: 150));
     return _avisList;
@@ -530,6 +748,8 @@ class MockReviewService implements ReviewService {
     required bool isVerified,
     List<String>? photos,
     String? authorName,
+    int? userId,
+    bool estAnonyme = false,
   }) async {
     await Future.delayed(const Duration(milliseconds: 500));
     final restaurant = MockData.restaurants.firstWhere(
@@ -537,7 +757,7 @@ class MockReviewService implements ReviewService {
     );
     final newAvis = Avis(
       id: _avisList.length + 101,
-      nomAuteur: authorName ?? "Utilisateur",
+      nomAuteur: estAnonyme ? 'Anonyme' : (authorName ?? "Utilisateur"),
       note: note,
       commentaire: comment,
       dateVisite: DateTime.now(),
@@ -548,6 +768,8 @@ class MockReviewService implements ReviewService {
       photoUrl: photos != null && photos.isNotEmpty ? photos.first : null,
       restaurantId: restaurantId,
       restaurantNom: restaurant.nom,
+      estAnonyme: estAnonyme,
+      userId: userId ?? ServiceLocator.authService.currentUser?.id,
     );
     _avisList.insert(0, newAvis);
   }
@@ -709,4 +931,32 @@ class MockAdminService implements AdminService {
   Future<void> deleteUser(int userId) async {
     await Future.delayed(const Duration(milliseconds: 200));
   }
+
+  @override
+  Future<List<AdminActionLog>> getAdminActionLogs() async {
+    await Future.delayed(const Duration(milliseconds: 250));
+    return [
+      AdminActionLog(
+        id: 1,
+        adminId: 6,
+        adminName: "Admin TruEats",
+        action: "valider_restaurant",
+        targetType: "Restaurant",
+        targetId: 1,
+        details: "Restaurant: Chez Tanti",
+        createdAt: DateTime.now().subtract(const Duration(hours: 2)),
+      ),
+      AdminActionLog(
+        id: 2,
+        adminId: 6,
+        adminName: "Admin TruEats",
+        action: "bloquer_utilisateur",
+        targetType: "User",
+        targetId: 3,
+        details: "Utilisateur: client3@trueats.com désactivé temporairement",
+        createdAt: DateTime.now().subtract(const Duration(hours: 5)),
+      ),
+    ];
+  }
 }
+

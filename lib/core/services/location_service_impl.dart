@@ -55,24 +55,25 @@ class GeolocatorLocationService implements LocationService {
     // peut se figer indéfiniment sans timeout si le matériel GPS n'est pas présent.
     // L'algorithme ci-dessous applique des replis successifs (précision moyenne puis dernière position connue).
     try {
+      // Délai augmenté à 15 secondes pour laisser le temps au matériel GPS de s'activer
       position = await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(
           accuracy: LocationAccuracy.high,
         ),
-      ).timeout(const Duration(seconds: 7));
+      ).timeout(const Duration(seconds: 15));
     } catch (e) {
       try {
-        // Premier repli : précision basse avec un timeout de 5 secondes
+        // Premier repli : précision basse avec un timeout étendu à 10 secondes
         position = await Geolocator.getCurrentPosition(
           locationSettings: const LocationSettings(
             accuracy: LocationAccuracy.low,
           ),
-        ).timeout(const Duration(seconds: 5));
+        ).timeout(const Duration(seconds: 10));
       } catch (_) {
         // Deuxième repli : récupération de la dernière position connue
         position = await Geolocator.getLastKnownPosition();
         if (position == null) {
-          throw Exception("Délai de détection GPS dépassé. Veuillez vous assurer que le partage de position est activé sur votre appareil.");
+          throw Exception("Délai de détection GPS dépassé. Veuillez vous assurer que le partage de position est activé sur votre appareil et que le signal est bon.");
         }
       }
     }

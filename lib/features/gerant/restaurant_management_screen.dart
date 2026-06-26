@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../../core/services/interfaces.dart';
 import '../../core/services/service_locator.dart';
@@ -10,6 +9,7 @@ import '../../core/widgets/image_picker_field.dart';
 import 'gerant_dashboard.dart';
 import 'register_restaurant_screen.dart';
 import '../../core/widgets/restaurant_logo.dart';
+import '../../core/widgets/document_preview_dialog.dart';
 import '../restaurant/restaurant_details_screen.dart';
 import '../../core/benin_locations.dart';
 
@@ -1190,87 +1190,17 @@ class _RestaurantManagementScreenState
     );
   }
 
-  String _getFullUrl(String? path) {
-    return ImageUrlHelper.resolve(path);
-  }
-
   void _viewDocument(String? url, String title) {
     if (url == null || url.isEmpty) return;
-    final fullUrl = _getFullUrl(url);
-    final isImage = url.toLowerCase().endsWith('.png') ||
-        url.toLowerCase().endsWith('.jpg') ||
-        url.toLowerCase().endsWith('.jpeg') ||
-        url.toLowerCase().endsWith('.webp');
+    final isPdf = url.toLowerCase().endsWith('.pdf');
 
-    showDialog<void>(
+    showDialog(
       context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Text(title, style: Theme.of(context).textTheme.titleLarge),
-          content: Container(
-            constraints: const BoxConstraints(maxWidth: 500, maxHeight: 500),
-            child: isImage
-                ? Image.network(
-                    fullUrl,
-                    headers: const {'ngrok-skip-browser-warning': 'true'},
-                    loadingBuilder: (context, child, progress) {
-                      if (progress == null) return child;
-                      return const Center(child: CircularProgressIndicator());
-                    },
-                    errorBuilder: (context, error, stackTrace) {
-                      return Center(
-                        child: Text(
-                          "Erreur lors du chargement de l'image.\nAdresse : $fullUrl",
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(color: AppColors.rougeSignalement),
-                        ),
-                      );
-                    },
-                  )
-                : Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(
-                        Icons.picture_as_pdf_outlined,
-                        size: 80,
-                        color: AppColors.terracotta,
-                      ),
-                      const SizedBox(height: 16),
-                      const Text(
-                        "Document PDF",
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                      ),
-                      const SizedBox(height: 12),
-                      SelectableText(
-                        fullUrl,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(color: AppColors.grisTexte, fontSize: 13),
-                      ),
-                      const SizedBox(height: 16),
-                      ElevatedButton.icon(
-                        onPressed: () {
-                          Clipboard.setData(ClipboardData(text: fullUrl));
-                          showAppNotification(
-                            context,
-                            title: 'Lien copie',
-                            message: 'Lien copie dans le presse-papiers.',
-                            type: AppFeedbackType.success,
-                          );
-                        },
-                        icon: const Icon(Icons.copy),
-                        label: const Text('Copier le lien'),
-                      ),
-                    ],
-                  ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Fermer'),
-            ),
-          ],
-        );
-      },
+      builder: (context) => DocumentPreviewDialog(
+        title: title,
+        url: url,
+        isPdf: isPdf,
+      ),
     );
   }
 
@@ -1392,8 +1322,6 @@ class _RestaurantManagementScreenState
                     _buildDocBadge("CIP Gérant", () => _viewDocument(_restaurant.cipUrl, "CIP Gérant")),
                   if (_restaurant.ifuNumero != null && _restaurant.ifuNumero!.isNotEmpty)
                     _buildDocBadge("IFU: ${_restaurant.ifuNumero}", () => _viewDocument(_restaurant.ifuAttestationUrl, "Attestation IFU")),
-                  if (_restaurant.rccmNumero != null && _restaurant.rccmNumero!.isNotEmpty)
-                    _buildDocBadge("RCCM: ${_restaurant.rccmNumero}", () => _viewDocument(_restaurant.rccmExtraitUrl, "Extrait RCCM")),
                 ],
               ),
             ],
@@ -1602,7 +1530,16 @@ class _RestaurantManagementScreenState
                         SizedBox(
                           width: double.infinity,
                           child: OutlinedButton.icon(
-                            onPressed: () => _showRestaurantEditSheet(_restaurant),
+                          onPressed: ServiceLocator.authService.currentUser?.restrictionGerant == true
+                              ? () {
+                                  showAppNotification(
+                                    context,
+                                    title: 'Accès restreint',
+                                    message: 'La gestion de votre restaurant est temporairement suspendue.',
+                                    type: AppFeedbackType.warning,
+                                  );
+                                }
+                              : () => _showRestaurantEditSheet(_restaurant),
                             icon: const Icon(Icons.edit_rounded, size: 16, color: AppColors.terracotta),
                             label: const Text(
                               "Modifier les informations",
@@ -1878,7 +1815,16 @@ class _RestaurantManagementScreenState
               ),
             ),
             TextButton.icon(
-              onPressed: () => _showPlatSheet(),
+              onPressed: ServiceLocator.authService.currentUser?.restrictionGerant == true
+                  ? () {
+                      showAppNotification(
+                        context,
+                        title: 'Accès restreint',
+                        message: 'La gestion du menu est temporairement suspendue.',
+                        type: AppFeedbackType.warning,
+                      );
+                    }
+                  : () => _showPlatSheet(),
               icon: const Icon(Icons.add, size: 18),
               label: const Text('Ajouter'),
             ),
@@ -1991,7 +1937,16 @@ class _RestaurantManagementScreenState
           ),
           IconButton(
             tooltip: 'Modifier',
-            onPressed: () => _showPlatSheet(plat: plat),
+            onPressed: ServiceLocator.authService.currentUser?.restrictionGerant == true
+                ? () {
+                    showAppNotification(
+                      context,
+                      title: 'Accès restreint',
+                      message: 'La gestion du menu est temporairement suspendue.',
+                      type: AppFeedbackType.warning,
+                    );
+                  }
+                : () => _showPlatSheet(plat: plat),
             icon: const Icon(Icons.edit_outlined),
           ),
           IconButton(
