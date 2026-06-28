@@ -19,6 +19,13 @@ class _WriteReviewScreenState extends State<WriteReviewScreen> {
   static const String _defaultCommentText =
       'Décrivez votre expérience culinaire, le service et le cadre';
 
+  static const List<String> _quickReviews = [
+    "Très bon repas, service impeccable !",
+    "Belle découverte, je recommande vivement.",
+    "Service très lent et plats froids, je suis déçu.",
+    "Trop bruyant et rapport qualité-prix décevant.",
+  ];
+
   int _selectedRating = 4;
   late final TextEditingController _commentController;
   bool _isUsingDefaultComment = true;
@@ -60,6 +67,26 @@ class _WriteReviewScreenState extends State<WriteReviewScreen> {
       _isUsingDefaultComment = false;
       setState(() {});
     }
+  }
+
+  void _addQuickReview(String text) {
+    setState(() {
+      if (_isUsingDefaultComment || _commentController.text.trim().isEmpty) {
+        _commentController.text = text;
+        _isUsingDefaultComment = false;
+      } else {
+        final currentText = _commentController.text;
+        if (currentText.endsWith(' ') || currentText.endsWith('\n')) {
+          _commentController.text = '$currentText$text';
+        } else {
+          _commentController.text = '$currentText $text';
+        }
+      }
+    });
+    // Move cursor to the end
+    _commentController.selection = TextSelection.fromPosition(
+      TextPosition(offset: _commentController.text.length),
+    );
   }
 
   Future<void> _checkGpsProximity() async {
@@ -247,6 +274,25 @@ class _WriteReviewScreenState extends State<WriteReviewScreen> {
                             ),
                           ),
                           const SizedBox(height: 8),
+                          Wrap(
+                            spacing: 8.0,
+                            runSpacing: 8.0,
+                            children: _quickReviews.map((review) {
+                              return ActionChip(
+                                label: Text(review),
+                                labelStyle: textTheme.bodyMedium?.copyWith(
+                                  color: AppColors.marronFonce,
+                                ),
+                                backgroundColor: AppColors.cremeFonce,
+                                side: const BorderSide(color: AppColors.grisBordure),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                onPressed: () => _addQuickReview(review),
+                              );
+                            }).toList(),
+                          ),
+                          const SizedBox(height: 12),
                           TextFormField(
                             controller: _commentController,
                             maxLines: 6,
